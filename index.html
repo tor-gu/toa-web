@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Tournament of Albums</title>
   <style>
+    /* ── Base & layout ─────────────────────────────────────────────────────── */
     body {
       font-family: system-ui, sans-serif;
       max-width: 800px;
@@ -15,6 +16,35 @@
     }
     h1 { margin-bottom: 0.25rem; }
     #date { color: #666; margin-bottom: 1.5rem; font-size: 0.9rem; }
+    #loading { color: #666; font-size: 0.9rem; }
+    #error {
+      color: #c00;
+      background: #fff0f0;
+      border: 1px solid #f0c0c0;
+      padding: 0.75rem 1rem;
+      border-radius: 4px;
+    }
+    #wip-notice {
+      background: #fff8e1; border: 1px solid #f0c040; border-radius: 4px;
+      color: #7a5c00; font-size: 0.9rem; font-weight: 500;
+      padding: 0.6rem 1rem; margin-bottom: 1.25rem;
+    }
+
+    /* ── Table ─────────────────────────────────────────────────────────────── */
+    #search-wrap { margin-bottom: 0.75rem; }
+    #search {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 0.5rem 0.75rem;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 0.9rem;
+      font-family: inherit;
+      background: #fff;
+      color: #222;
+    }
+    #search:focus { outline: none; border-color: #aaa; }
+    #content { max-height: 420px; overflow-y: auto; }
     table {
       width: 100%;
       border-collapse: collapse;
@@ -29,6 +59,7 @@
       text-transform: uppercase;
       letter-spacing: 0.05em;
       color: #555;
+      position: sticky; top: 0; z-index: 1; background: #fff;
     }
     td {
       padding: 0.55rem 0.8rem;
@@ -38,15 +69,13 @@
     tr:hover td { background: #f5f5f5; }
     .rank { color: #999; width: 2.5rem; }
     .score { font-variant-numeric: tabular-nums; }
-    #loading { color: #666; font-size: 0.9rem; }
-    #error {
-      color: #c00;
-      background: #fff0f0;
-      border: 1px solid #f0c0c0;
-      padding: 0.75rem 1rem;
-      border-radius: 4px;
-    }
     .clickable-row { cursor: pointer; }
+    th.sortable { cursor: pointer; user-select: none; }
+    th.sortable:hover { color: #222; }
+    .sort-indicator { margin-left: 0.3em; font-size: 0.75em; color: #bbb; }
+    th.sort-active .sort-indicator { color: #444; }
+
+    /* ── History panel ──────────────────────────────────────────────────────── */
     #history-panel {
       display: none;
       margin-top: 1.5rem;
@@ -77,7 +106,8 @@
     #history-status { color: #666; font-size: 0.9rem; margin: 0; }
     #history-status.error { color: #c00; }
     #history-canvas-wrap { position: relative; height: 260px; }
-    #content { max-height: 420px; overflow-y: auto; }
+
+    /* ── Chart tooltip ──────────────────────────────────────────────────────── */
     #chart-tooltip {
       position: absolute; pointer-events: auto;
       background: rgba(0,0,0,0.82); color: #fff;
@@ -96,29 +126,6 @@
       text-decoration: underline; text-underline-offset: 2px;
     }
     .tt-row.tt-clickable:hover { color: #c5e4ff; }
-    th { position: sticky; top: 0; z-index: 1; background: #fff; }
-    #wip-notice {
-      background: #fff8e1; border: 1px solid #f0c040; border-radius: 4px;
-      color: #7a5c00; font-size: 0.9rem; font-weight: 500;
-      padding: 0.6rem 1rem; margin-bottom: 1.25rem;
-    }
-    #search-wrap { margin-bottom: 0.75rem; }
-    #search {
-      width: 100%;
-      box-sizing: border-box;
-      padding: 0.5rem 0.75rem;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      font-size: 0.9rem;
-      font-family: inherit;
-      background: #fff;
-      color: #222;
-    }
-    #search:focus { outline: none; border-color: #aaa; }
-    th.sortable { cursor: pointer; user-select: none; }
-    th.sortable:hover { color: #222; }
-    .sort-indicator { margin-left: 0.3em; font-size: 0.75em; color: #bbb; }
-    th.sort-active .sort-indicator { color: #444; }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 </head>
@@ -142,6 +149,7 @@
   </div>
 
   <script>
+    // ── Config ────────────────────────────────────────────────────────────────
     const API_BASE_URL = "https://REDACTED.execute-api.us-east-1.amazonaws.com/v1"; // terraform output api_base_url
 
     const COLORS = [
@@ -153,6 +161,13 @@
       { border: "#16a085", bg: "rgba(22,160,133,0.08)" },
     ];
 
+    // ── State ─────────────────────────────────────────────────────────────────
+    // Table
+    let allScores = [];
+    let currentFilter = "";
+    let currentSort = { col: null, dir: "asc" };
+
+    // History panel
     let activeAlbumIds = new Set();
     let albumDataCache = {};
     let albumNames = {};
@@ -161,49 +176,17 @@
     let pendingFetches = 0;
     let activeChart = null;
     let tooltipTimeout = null;
-    let allScores = [];
-    let currentFilter = "";
-    let currentSort = { col: null, dir: "asc" };
 
-    function assignColor(albumId) {
-      if (albumColorMap[albumId] !== undefined) return;
-      for (let i = 0; i < COLORS.length; i++) {
-        if (!usedColorIndices.has(i)) {
-          albumColorMap[albumId] = i;
-          usedColorIndices.add(i);
-          return;
-        }
-      }
-      albumColorMap[albumId] = Object.keys(albumColorMap).length % COLORS.length;
+    // ── Utilities ─────────────────────────────────────────────────────────────
+    function esc(s) {
+      return String(s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
     }
 
-    function releaseColor(albumId) {
-      if (albumColorMap[albumId] !== undefined) {
-        usedColorIndices.delete(albumColorMap[albumId]);
-        delete albumColorMap[albumId];
-      }
-    }
-
-    function renderChips() {
-      const container = document.getElementById("history-chips");
-      container.innerHTML = [...activeAlbumIds].map(id => {
-        const { shortName, albumName, artist } = albumNames[id] || {};
-        const color = COLORS[albumColorMap[id] ?? 0].border;
-        const title = artist && albumName ? `${artist} — ${albumName}` : (albumName || id);
-        return `<span class="album-chip" title="${esc(title)}">
-          <span class="chip-dot" style="background:${color}"></span>
-          ${esc(shortName || albumName || id)}
-          <button class="chip-remove" data-album-id="${esc(id)}">×</button>
-        </span>`;
-      }).join("");
-      container.querySelectorAll(".chip-remove").forEach(btn => {
-        btn.addEventListener("click", e => {
-          e.stopPropagation();
-          removeAlbum(btn.dataset.albumId);
-        });
-      });
-    }
-
+    // ── Table ─────────────────────────────────────────────────────────────────
     function renderTable() {
       const filter = currentFilter.toLowerCase();
       let rows = allScores;
@@ -247,68 +230,44 @@
       });
     }
 
-    async function load() {
-      document.getElementById("content").innerHTML = '<p id="loading">Loading…</p>';
-      try {
-        const res = await fetch(`${API_BASE_URL}/scores`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-
-        document.getElementById("date").textContent = `Scores as of ${data.date}`;
-
-        allScores = [...data.scores]
-          .sort((a, b) => b.score - a.score)
-          .map((s, i) => ({ ...s, rank: i + 1 }));
-
-        document.getElementById("content").innerHTML = `
-          <table>
-            <thead>
-              <tr>
-                <th>Rank</th>
-                <th class="sortable" data-col="artist">Artist <span class="sort-indicator">↕</span></th>
-                <th class="sortable" data-col="album">Album <span class="sort-indicator">↕</span></th>
-                <th class="sortable" data-col="score">Score <span class="sort-indicator">↕</span></th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>`;
-
-        renderTable();
-
-        document.querySelector("#content tbody").addEventListener("click", e => {
-          const row = e.target.closest("tr[data-album-id]");
-          if (!row) return;
-          const { albumId, artist, albumName, shortName } = row.dataset;
-          if (activeAlbumIds.has(albumId)) return;
-          albumNames[albumId] = { artist, albumName, shortName };
-          activeAlbumIds.add(albumId);
-          assignColor(albumId);
-          renderChips();
-          addAlbum(albumId, artist, albumName, shortName);
-        });
-
-        document.querySelectorAll("#content th[data-col]").forEach(th => {
-          th.addEventListener("click", () => {
-            const col = th.dataset.col;
-            if (currentSort.col === col) {
-              currentSort.dir = currentSort.dir === "asc" ? "desc" : "asc";
-            } else {
-              currentSort = { col, dir: col === "score" ? "desc" : "asc" };
-            }
-            renderTable();
-          });
-        });
-
-        document.getElementById("search").addEventListener("input", e => {
-          currentFilter = e.target.value;
-          renderTable();
-        });
-
-        document.getElementById("history-close").addEventListener("click", closeHistory);
-      } catch (e) {
-        document.getElementById("content").innerHTML =
-          `<div id="error">Failed to load scores: ${esc(e.message)}</div>`;
+    // ── History Panel ─────────────────────────────────────────────────────────
+    function assignColor(albumId) {
+      if (albumColorMap[albumId] !== undefined) return;
+      for (let i = 0; i < COLORS.length; i++) {
+        if (!usedColorIndices.has(i)) {
+          albumColorMap[albumId] = i;
+          usedColorIndices.add(i);
+          return;
+        }
       }
+      albumColorMap[albumId] = Object.keys(albumColorMap).length % COLORS.length;
+    }
+
+    function releaseColor(albumId) {
+      if (albumColorMap[albumId] !== undefined) {
+        usedColorIndices.delete(albumColorMap[albumId]);
+        delete albumColorMap[albumId];
+      }
+    }
+
+    function renderChips() {
+      const container = document.getElementById("history-chips");
+      container.innerHTML = [...activeAlbumIds].map(id => {
+        const { shortName, albumName, artist } = albumNames[id] || {};
+        const color = COLORS[albumColorMap[id] ?? 0].border;
+        const title = artist && albumName ? `${artist} — ${albumName}` : (albumName || id);
+        return `<span class="album-chip" title="${esc(title)}">
+          <span class="chip-dot" style="background:${color}"></span>
+          ${esc(shortName || albumName || id)}
+          <button class="chip-remove" data-album-id="${esc(id)}">×</button>
+        </span>`;
+      }).join("");
+      container.querySelectorAll(".chip-remove").forEach(btn => {
+        btn.addEventListener("click", e => {
+          e.stopPropagation();
+          removeAlbum(btn.dataset.albumId);
+        });
+      });
     }
 
     async function addAlbum(albumId, artist, albumName, shortName) {
@@ -505,12 +464,69 @@
       usedColorIndices = new Set();
     }
 
-    function esc(s) {
-      return String(s)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;");
+    // ── Init ──────────────────────────────────────────────────────────────────
+    async function load() {
+      document.getElementById("content").innerHTML = '<p id="loading">Loading…</p>';
+      try {
+        const res = await fetch(`${API_BASE_URL}/scores`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+
+        document.getElementById("date").textContent = `Scores as of ${data.date}`;
+
+        allScores = [...data.scores]
+          .sort((a, b) => b.score - a.score)
+          .map((s, i) => ({ ...s, rank: i + 1 }));
+
+        document.getElementById("content").innerHTML = `
+          <table>
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th class="sortable" data-col="artist">Artist <span class="sort-indicator">↕</span></th>
+                <th class="sortable" data-col="album">Album <span class="sort-indicator">↕</span></th>
+                <th class="sortable" data-col="score">Score <span class="sort-indicator">↕</span></th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>`;
+
+        renderTable();
+
+        document.querySelector("#content tbody").addEventListener("click", e => {
+          const row = e.target.closest("tr[data-album-id]");
+          if (!row) return;
+          const { albumId, artist, albumName, shortName } = row.dataset;
+          if (activeAlbumIds.has(albumId)) return;
+          albumNames[albumId] = { artist, albumName, shortName };
+          activeAlbumIds.add(albumId);
+          assignColor(albumId);
+          renderChips();
+          addAlbum(albumId, artist, albumName, shortName);
+        });
+
+        document.querySelectorAll("#content th[data-col]").forEach(th => {
+          th.addEventListener("click", () => {
+            const col = th.dataset.col;
+            if (currentSort.col === col) {
+              currentSort.dir = currentSort.dir === "asc" ? "desc" : "asc";
+            } else {
+              currentSort = { col, dir: col === "score" ? "desc" : "asc" };
+            }
+            renderTable();
+          });
+        });
+
+        document.getElementById("search").addEventListener("input", e => {
+          currentFilter = e.target.value;
+          renderTable();
+        });
+
+        document.getElementById("history-close").addEventListener("click", closeHistory);
+      } catch (e) {
+        document.getElementById("content").innerHTML =
+          `<div id="error">Failed to load scores: ${esc(e.message)}</div>`;
+      }
     }
 
     load();
