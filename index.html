@@ -6,267 +6,251 @@
   <title>Tournament of Albums — Official Standings</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@500;600&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
-    /* ── Tokens ──────────────────────────────────────────────────────────────── */
     :root {
-      --arena-black: #0d0d14;
-      --surface: #16161f;
-      --surface-hover: #1e1e2b;
-      --gold: #c8a84b;
-      --gold-bright: #f0cc6e;
-      --silver: #9898a8;
-      --white: #eeeef4;
-      --border-gold: rgba(200, 168, 75, 0.25);
-      --border-subtle: rgba(152, 152, 168, 0.25);
+      --paper: #FBF7F0;
+      --surface: #FFFFFF;
+      --pink: #FF3D7F;
+      --cyan: #1EC8E0;
+      --yellow: #FFD23F;
+      --violet: #7C3AED;
+      --ink: #1A1A2E;
+      --ink-soft: #5A5A72;
+      --line: rgba(26, 26, 46, 0.1);
     }
-
-    /* ── Base & layout ───────────────────────────────────────────────────────── */
     *, *::before, *::after { box-sizing: border-box; }
     body {
-      font-family: 'Inter', system-ui, sans-serif;
+      font-family: 'Poppins', system-ui, sans-serif;
       max-width: 800px;
       margin: 0 auto;
       padding: 0 1rem 4rem;
-      color: var(--white);
-      background: var(--arena-black);
+      color: var(--ink);
+      background: var(--paper);
     }
-    :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+    :focus-visible { outline: 3px solid var(--violet); outline-offset: 2px; }
 
-    /* ── Header ──────────────────────────────────────────────────────────────── */
+    /* ── Compact header ─────────────────────────────────────── */
     .page-header {
+      position: relative;
+      overflow: hidden;
       text-align: center;
-      padding: 2.5rem 0 1rem;
+      padding: 1.1rem 1rem 0.9rem;
+      margin-bottom: 1rem;
     }
-    .title-rule {
-      height: 2px;
-      background: linear-gradient(90deg, transparent, var(--gold) 20%, var(--gold-bright) 50%, var(--gold) 80%, transparent);
-      margin: 0.4rem 0;
-    }
+    .header-deco { position: absolute; inset: 0; pointer-events: none; }
+    .header-deco svg { position: absolute; }
     h1 {
-      font-family: 'Bebas Neue', sans-serif;
-      font-size: clamp(1.6rem, 5.5vw, 3rem);
-      letter-spacing: 0.08em;
-      margin: 0.2rem 0;
-      color: var(--gold-bright);
+      position: relative;
+      font-family: 'Bungee', sans-serif;
+      font-size: clamp(1.5rem, 5vw, 2.4rem);
+      margin: 0;
       line-height: 1;
-      text-shadow: 0 0 60px rgba(240, 204, 110, 0.25);
+      letter-spacing: 0.01em;
     }
+    .title-ch {
+      display: inline-block;
+      animation: hop 1.6s ease-in-out infinite;
+      animation-delay: calc(var(--i) * 0.07s);
+    }
+    @keyframes hop {
+      0%, 70%, 100% { transform: translateY(0); }
+      35%            { transform: translateY(-10px); }
+    }
+    @media (prefers-reduced-motion: reduce) { .title-ch { animation: none; } }
     #date {
-      font-family: 'Oswald', sans-serif;
-      font-size: 0.8rem;
-      font-weight: 500;
-      letter-spacing: 0.18em;
+      position: relative;
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
       text-transform: uppercase;
-      color: var(--silver);
-      margin: 0.6rem 0 0;
+      color: var(--ink-soft);
+      margin: 0.45rem 0 0;
     }
 
-    /* ── WIP notice ──────────────────────────────────────────────────────────── */
+    /* ── WIP notice ─────────────────────────────────────────── */
     #wip-notice {
-      background: #fff8e1;
-      border: 1px solid #f0c040;
-      border-radius: 4px;
-      color: #7a5c00;
-      font-size: 0.9rem;
-      font-weight: 500;
-      padding: 0.6rem 1rem;
-      margin: 1.25rem 0;
+      background: var(--yellow);
+      border: 2px solid var(--ink);
+      border-radius: 10px;
+      color: var(--ink);
+      font-size: 0.85rem;
+      font-weight: 600;
+      padding: 0.5rem 0.9rem;
+      margin: 0 0 1rem;
+      box-shadow: 3px 3px 0 var(--pink);
     }
 
-    /* ── Loading / Error ─────────────────────────────────────────────────────── */
-    #loading { color: var(--silver); font-size: 0.9rem; }
+    /* ── Loading / Error ────────────────────────────────────── */
+    #loading { color: var(--ink-soft); font-size: 0.9rem; font-weight: 600; }
     #error {
-      font-family: 'Oswald', sans-serif;
-      font-size: 0.85rem;
-      font-weight: 500;
-      letter-spacing: 0.05em;
-      color: #d07070;
-      background: rgba(139, 26, 26, 0.15);
-      border: 1px solid rgba(139, 26, 26, 0.4);
+      font-size: 0.85rem; font-weight: 700;
+      color: #fff; background: var(--pink);
+      border: 2px solid var(--ink); border-radius: 8px;
       padding: 0.75rem 1rem;
     }
 
-    /* ── Section labels ──────────────────────────────────────────────────────── */
+    /* ── Section label ──────────────────────────────────────── */
     .section-label {
-      font-family: 'Bebas Neue', sans-serif;
-      font-size: 1.3rem;
-      letter-spacing: 0.15em;
-      color: var(--silver);
-      border-bottom: 1px solid var(--border-subtle);
-      padding-bottom: 0.35rem;
-      margin: 0 0 0.75rem;
+      font-family: 'Bungee', sans-serif;
+      font-size: 1rem;
+      color: var(--violet);
+      margin: 0 0 0.6rem;
+      padding-bottom: 0.3rem;
+      border-bottom: 3px solid var(--cyan);
     }
 
-    /* ── Table ───────────────────────────────────────────────────────────────── */
+    /* ── Search ─────────────────────────────────────────────── */
     #search-wrap { margin-bottom: 0.75rem; }
     #search {
       width: 100%;
-      padding: 0.55rem 0.75rem;
-      border: 1px solid var(--border-subtle);
+      padding: 0.6rem 0.9rem;
+      border: 2px solid var(--ink);
+      border-radius: 24px;
       font-size: 0.9rem;
-      font-family: 'Inter', sans-serif;
+      font-family: 'Poppins', sans-serif;
+      font-weight: 500;
       background: var(--surface);
-      color: var(--white);
+      color: var(--ink);
+      outline: none;
+      transition: box-shadow 0.15s;
     }
-    #search::placeholder { color: var(--silver); }
-    #search:focus { outline: none; border-color: var(--gold); }
+    #search::placeholder { color: var(--ink-soft); opacity: 0.7; }
+    #search:focus { box-shadow: 3px 3px 0 var(--cyan); }
 
-    #content { max-height: 420px; overflow-y: auto; }
-    #content::-webkit-scrollbar { width: 3px; }
-    #content::-webkit-scrollbar-track { background: transparent; }
-    #content::-webkit-scrollbar-thumb { background: var(--gold); }
-
+    /* ── Table ──────────────────────────────────────────────── */
+    #content { max-height: 420px; overflow-y: auto; border-radius: 10px; border: 2px solid var(--ink); }
+    #content::-webkit-scrollbar { width: 4px; }
+    #content::-webkit-scrollbar-thumb { background: var(--violet); border-radius: 2px; }
     table { width: 100%; border-collapse: collapse; background: var(--surface); }
     th {
       text-align: left;
-      padding: 0.6rem 0.8rem;
-      border-bottom: 1px solid var(--gold);
-      font-family: 'Oswald', sans-serif;
-      font-size: 0.75rem;
-      font-weight: 600;
+      padding: 0.6rem 0.85rem;
+      border-bottom: 3px solid var(--pink);
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.72rem;
+      font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.12em;
-      color: var(--gold);
+      letter-spacing: 0.08em;
+      color: var(--ink);
       position: sticky; top: 0; z-index: 1;
       background: var(--surface);
     }
-    td { padding: 0.55rem 0.8rem; border-bottom: 1px solid var(--border-subtle); font-size: 0.9rem; }
+    td { padding: 0.5rem 0.85rem; border-bottom: 1px solid var(--line); font-size: 0.9rem; font-weight: 500; }
     tr:last-child td { border-bottom: none; }
-    tr:hover td { background: var(--surface-hover); transition: background 0.1s; }
+    tr:hover td { background: rgba(255, 61, 127, 0.06); transition: background 0.1s; }
     .rank {
-      font-family: 'Bebas Neue', sans-serif;
-      font-size: 1rem;
-      color: var(--silver);
-      width: 2.5rem;
-      letter-spacing: 0.05em;
+      font-family: 'Bungee', sans-serif;
+      font-size: 0.9rem;
+      width: 2.6rem;
     }
-    .score { font-variant-numeric: tabular-nums; color: var(--gold); font-weight: 500; }
+    .rank span {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-width: 1.7rem; height: 1.7rem; padding: 0 0.35rem;
+      border-radius: 8px; font-size: 0.72rem; color: #fff;
+    }
+    .score { font-variant-numeric: tabular-nums; color: var(--violet); font-weight: 700; }
     .clickable-row { cursor: pointer; }
     th.sortable { cursor: pointer; user-select: none; }
-    th.sortable:hover { color: var(--gold-bright); }
-    .sort-indicator { margin-left: 0.3em; font-size: 0.75em; color: rgba(152, 152, 168, 0.4); }
-    th.sort-active .sort-indicator { color: var(--gold-bright); }
+    th.sortable:hover { color: var(--pink); }
+    .sort-indicator { margin-left: 0.3em; font-size: 1em; color: rgba(26, 26, 46, 0.25); }
+    th.sortable { white-space: nowrap; }
+    th.sort-active .sort-indicator { color: var(--pink); }
 
-    /* ── History panel ───────────────────────────────────────────────────────── */
+    /* ── History Panel ──────────────────────────────────────── */
     #history-panel {
       display: none;
-      margin-top: 1.5rem;
+      margin-top: 1.25rem;
       background: var(--surface);
-      border: 1px solid var(--border-subtle);
+      border: 2px solid var(--ink);
+      border-radius: 12px;
       padding: 1rem 1.25rem 1.25rem;
       position: relative;
+      box-shadow: 4px 4px 0 var(--yellow);
     }
     .history-panel-label {
-      font-family: 'Bebas Neue', sans-serif;
-      font-size: 1.1rem;
-      letter-spacing: 0.15em;
-      color: var(--silver);
+      font-family: 'Bungee', sans-serif;
+      font-size: 0.95rem;
+      color: var(--cyan);
       margin: 0 0 0.75rem;
     }
     #history-panel h2 {
       margin: 0 0 0.6rem;
-      font-family: 'Oswald', sans-serif;
-      font-size: 0.8rem;
-      font-weight: 600;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--gold);
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.74rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      color: var(--violet);
     }
     #history-close {
       position: absolute; top: 0.75rem; right: 1rem;
-      cursor: pointer; font-size: 1.2rem; color: var(--silver);
+      cursor: pointer; font-size: 1.2rem; color: var(--ink-soft);
       background: none; border: none; line-height: 1;
     }
-    #history-close:hover { color: var(--white); }
+    #history-close:hover { color: var(--pink); }
     #history-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.75rem; }
     .album-chip {
       display: inline-flex; align-items: center; gap: 0.35rem;
-      background: var(--arena-black);
-      border: 1px solid var(--border-subtle);
-      padding: 0.2rem 0.4rem 0.2rem 0.5rem;
-      font-size: 0.8rem;
-      font-family: 'Oswald', sans-serif;
-      font-weight: 500;
-      letter-spacing: 0.03em;
-      color: var(--white);
+      background: var(--paper); border: 2px solid var(--ink); border-radius: 18px;
+      padding: 0.15rem 0.45rem 0.15rem 0.5rem;
+      font-size: 0.8rem; font-weight: 600; color: var(--ink);
     }
     .chip-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-    .chip-remove {
-      background: none; border: none; cursor: pointer;
-      color: var(--silver); font-size: 0.9rem; padding: 0; line-height: 1;
-    }
-    .chip-remove:hover { color: var(--white); }
-    #history-status { color: var(--silver); font-size: 0.85rem; margin: 0; }
-    #history-status.error { color: #d07070; }
+    .chip-remove { background: none; border: none; cursor: pointer; color: var(--ink-soft); font-size: 0.9rem; padding: 0; line-height: 1; }
+    .chip-remove:hover { color: var(--pink); }
+    #history-status { color: var(--ink-soft); font-size: 0.85rem; margin: 0; font-weight: 500; }
+    #history-status.error { color: var(--pink); }
     #history-canvas-wrap { position: relative; height: 260px; }
 
-    /* ── History two-pane layout ─────────────────────────────────────────────── */
     #history-panes { display: flex; gap: 1.5rem; align-items: flex-start; }
     #score-pane { flex: 55 0 0%; min-width: 0; }
     #match-pane { flex: 45 0 0%; min-width: 0; }
-    #match-status { color: var(--silver); font-size: 0.875rem; margin: 0; }
-    #match-status.error { color: #d07070; }
-    #match-list { border: 1px solid var(--border-subtle); overflow-y: auto; max-height: 310px; }
-    .match-row { border-bottom: 1px solid var(--border-subtle); }
+    #match-status { color: var(--ink-soft); font-size: 0.875rem; margin: 0; font-weight: 500; }
+    #match-status.error { color: var(--pink); }
+    #match-list { border: 2px solid var(--ink); border-radius: 8px; overflow-y: auto; max-height: 310px; }
+    .match-row { border-bottom: 1px solid var(--line); }
     .match-row:last-child { border-bottom: none; }
     .match-toggle {
       width: 100%; display: flex; justify-content: space-between; align-items: center;
       padding: 0.45rem 0.75rem;
-      background: none; border: none; cursor: pointer;
-      text-align: left;
-      font-family: 'Oswald', sans-serif;
-      font-size: 0.78rem;
-      font-weight: 500;
-      letter-spacing: 0.06em;
-      color: var(--silver);
+      background: none; border: none; cursor: pointer; text-align: left;
+      font-family: 'Poppins', sans-serif; font-size: 0.8rem; font-weight: 600; color: var(--ink-soft);
     }
-    .match-toggle:hover { background: rgba(200, 168, 75, 0.06); color: var(--white); }
-    .match-toggle.open { background: rgba(200, 168, 75, 0.1); color: var(--gold); }
-    .match-arrow { color: rgba(152, 152, 168, 0.4); font-size: 0.7em; transition: transform 0.15s; }
+    .match-toggle:hover { background: rgba(124, 58, 237, 0.06); color: var(--ink); }
+    .match-toggle.open { background: rgba(124, 58, 237, 0.1); color: var(--violet); }
+    .match-arrow { color: rgba(26, 26, 46, 0.3); font-size: 0.7em; transition: transform 0.15s; }
     .match-toggle.open .match-arrow { transform: rotate(90deg); }
     .match-detail { padding: 0.25rem 0.75rem 0.5rem; display: none; }
     .match-detail.open { display: block; }
     .ranking-item { padding: 0.2rem 0; display: flex; gap: 0.5rem; align-items: baseline; font-size: 0.85rem; }
-    .ranking-num {
-      font-family: 'Bebas Neue', sans-serif;
-      font-size: 0.9rem;
-      color: var(--silver);
-      min-width: 1.2rem;
-      text-align: right;
-      flex-shrink: 0;
-    }
-    .ranking-album-btn {
-      background: none; border: none; padding: 0; cursor: pointer;
-      color: var(--white); font: inherit; text-align: left;
-    }
-    .ranking-album-btn:hover { text-decoration: underline; color: var(--gold); }
-    .ranking-item.focal .ranking-album-btn { font-weight: 600; color: var(--gold-bright); }
+    .ranking-num { font-family: 'Bungee', sans-serif; font-size: 0.8rem; color: var(--pink); min-width: 1.3rem; text-align: right; flex-shrink: 0; }
+    .ranking-album-btn { background: none; border: none; padding: 0; cursor: pointer; color: var(--ink); font: inherit; text-align: left; font-weight: 500; }
+    .ranking-album-btn:hover { text-decoration: underline; color: var(--violet); }
+    .ranking-item.focal .ranking-album-btn { font-weight: 700; color: var(--violet); }
 
-    /* ── Responsive ──────────────────────────────────────────────────────────── */
     @media (max-width: 600px) {
       #history-panes { flex-direction: column; }
       #score-pane, #match-pane { flex: none; width: 100%; }
     }
-
-    /* ── Reduced motion ──────────────────────────────────────────────────────── */
-    @media (prefers-reduced-motion: reduce) {
-      .match-arrow { transition: none; }
-    }
+    @media (prefers-reduced-motion: reduce) { .match-arrow { transition: none; } }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 </head>
 <body>
   <div class="page-header">
-    <div class="title-rule"></div>
+    <div class="header-deco">
+      <svg width="48" height="20" viewBox="0 0 48 20" style="left:4%;top:18%"><path d="M2 12 Q8 2 14 12 T26 12 T38 12" fill="none" stroke="#FF3D7F" stroke-width="3" stroke-linecap="round"/></svg>
+      <svg width="40" height="16" viewBox="0 0 40 16" style="right:5%;top:14%"><path d="M2 14 L8 2 L14 14 L20 2 L26 14 L32 2 L38 14" fill="none" stroke="#1EC8E0" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <svg width="22" height="22" viewBox="0 0 22 22" style="left:16%;bottom:6%"><circle cx="5" cy="5" r="3" fill="#7C3AED"/><circle cx="14" cy="6" r="3" fill="#FFD23F"/><circle cx="9" cy="15" r="3" fill="#1EC8E0"/></svg>
+      <svg width="20" height="20" viewBox="0 0 20 20" style="right:14%;bottom:8%"><path d="M10 2 L18 18 L2 18 Z" fill="none" stroke="#FFD23F" stroke-width="3" stroke-linejoin="round"/></svg>
+    </div>
     <h1>Tournament of Albums</h1>
-    <div class="title-rule"></div>
     <div id="date"></div>
   </div>
 
-  <p id="wip-notice">This is a work in progress.</p>
+  <p id="wip-notice">NOTE: This is a work in progress.</p>
 
-  <div class="section-label">The Contenders</div>
+  <div class="section-label">Current Rankings</div>
   <div id="search-wrap">
     <input type="text" id="search" placeholder="Search the field…" aria-label="Search artist or album">
   </div>
@@ -274,15 +258,13 @@
 
   <div id="history-panel">
     <button id="history-close" aria-label="Close history">×</button>
-    <div class="history-panel-label">Performance Records</div>
+    <div class="history-panel-label">History</div>
     <div id="history-panes">
       <div id="score-pane">
         <h2 id="history-title"></h2>
         <div id="history-chips"></div>
         <p id="history-status"></p>
-        <div id="history-canvas-wrap">
-          <canvas id="history-canvas"></canvas>
-        </div>
+        <div id="history-canvas-wrap"><canvas id="history-canvas"></canvas></div>
       </div>
       <div id="match-pane">
         <h2 id="match-title">Match History</h2>
@@ -293,141 +275,87 @@
   </div>
 
   <script>
-    // ── Config ────────────────────────────────────────────────────────────────
-    const API_BASE_URL = "https://REDACTED.execute-api.us-east-1.amazonaws.com/v1"; // terraform output api_base_url
+    const TITLE_COLORS = ['#FF3D7F', '#1EC8E0', '#FFD23F', '#7C3AED'];
+    const RANK_COLORS = ['#FF3D7F', '#1EC8E0', '#7C3AED', '#FFB400'];
+    function animateTitle() {
+      const h1 = document.querySelector('h1');
+      const text = h1.textContent;
+      let ci = 0;
+      h1.innerHTML = [...text].map((ch, i) => {
+        if (ch === ' ') return ' ';
+        const safe = ch === '&' ? '&amp;' : ch === '<' ? '&lt;' : ch === '>' ? '&gt;' : ch;
+        const color = TITLE_COLORS[ci++ % TITLE_COLORS.length];
+        return `<span class="title-ch" style="--i:${i};color:${color}">${safe}</span>`;
+      }).join('');
+    }
+    animateTitle();
 
+    const API_BASE_URL = "https://REDACTED.execute-api.us-east-1.amazonaws.com/v1";
     const COLORS = [
-      { border: "#6b9fe8", bg: "rgba(107,159,232,0.12)" },
-      { border: "#e8824a", bg: "rgba(232,130,74,0.12)" },
-      { border: "#4ec98c", bg: "rgba(78,201,140,0.12)" },
-      { border: "#b87ede", bg: "rgba(184,126,222,0.12)" },
-      { border: "#e85f5f", bg: "rgba(232,95,95,0.12)" },
-      { border: "#30c8b0", bg: "rgba(48,200,176,0.12)" },
+      { border: "#FF3D7F", bg: "rgba(255,61,127,0.12)" },
+      { border: "#1EC8E0", bg: "rgba(30,200,224,0.12)" },
+      { border: "#7C3AED", bg: "rgba(124,58,237,0.12)" },
+      { border: "#FFB400", bg: "rgba(255,180,0,0.14)" },
+      { border: "#34D399", bg: "rgba(52,211,153,0.12)" },
+      { border: "#F2552C", bg: "rgba(242,85,44,0.12)" },
     ];
 
-    // ── State ─────────────────────────────────────────────────────────────────
-    // Table
-    let allScores = [];
-    let currentFilter = "";
-    let currentSort = { col: null, dir: "asc" };
+    let allScores = [], currentFilter = "", currentSort = { col: null, dir: "asc" };
+    let activeAlbumIds = new Set(), albumDataCache = {}, albumNames = {}, albumColorMap = {};
+    let usedColorIndices = new Set(), pendingFetches = 0, activeChart = null;
+    let focalAlbumId = null, matchResultCache = {};
 
-    // History panel
-    let activeAlbumIds = new Set();
-    let albumDataCache = {};
-    let albumNames = {};
-    let albumColorMap = {};
-    let usedColorIndices = new Set();
-    let pendingFetches = 0;
-    let activeChart = null;
-    let focalAlbumId = null;
-    let matchResultCache = {};
+    function esc(s) { return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
 
-    // ── Utilities ─────────────────────────────────────────────────────────────
-    function esc(s) {
-      return String(s)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;");
-    }
-
-    // ── Table ─────────────────────────────────────────────────────────────────
     function renderTable() {
       const filter = currentFilter.toLowerCase();
       let rows = allScores;
-      if (filter) {
-        rows = rows.filter(s =>
-          s.artist.toLowerCase().includes(filter) ||
-          s.album.toLowerCase().includes(filter)
-        );
-      }
+      if (filter) rows = rows.filter(s => s.artist.toLowerCase().includes(filter) || s.album.toLowerCase().includes(filter));
       if (currentSort.col) {
         const { col, dir } = currentSort;
         rows = [...rows].sort((a, b) => {
           if (col === "score") return dir === "asc" ? a.score - b.score : b.score - a.score;
-          const av = col === "artist" ? a.artist : a.album;
-          const bv = col === "artist" ? b.artist : b.album;
+          const av = col === "artist" ? a.artist : a.album; const bv = col === "artist" ? b.artist : b.album;
           return dir === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
         });
       }
-
       document.querySelector("#content tbody").innerHTML = rows.map(s => `
-        <tr class="clickable-row"
-            data-album-id="${esc(s.id)}"
-            data-artist="${esc(s.artist)}"
-            data-album-name="${esc(s.album)}"
-            data-short-name="${esc(s['short-name'])}">
-          <td class="rank">${s.rank}</td>
-          <td>${esc(s.artist)}</td>
-          <td>${esc(s.album)}</td>
-          <td class="score">${s.score.toFixed(3)}</td>
+        <tr class="clickable-row" data-album-id="${esc(s.id)}" data-artist="${esc(s.artist)}" data-album-name="${esc(s.album)}" data-short-name="${esc(s['short-name'])}">
+          <td class="rank"><span style="background:${RANK_COLORS[(s.rank-1)%RANK_COLORS.length]}">${s.rank}</span></td>
+          <td>${esc(s.artist)}</td><td>${esc(s.album)}</td><td class="score">${s.score.toFixed(3)}</td>
         </tr>`).join("");
-
       document.querySelectorAll("#content th[data-col]").forEach(th => {
         const ind = th.querySelector(".sort-indicator");
-        if (th.dataset.col === currentSort.col) {
-          th.classList.add("sort-active");
-          ind.textContent = currentSort.dir === "asc" ? "↑" : "↓";
-        } else {
-          th.classList.remove("sort-active");
-          ind.textContent = "↕";
-        }
+        if (th.dataset.col === currentSort.col) { th.classList.add("sort-active"); ind.textContent = currentSort.dir === "asc" ? "↑" : "↓"; }
+        else { th.classList.remove("sort-active"); ind.textContent = "↕"; }
       });
     }
 
-    // ── History Panel ─────────────────────────────────────────────────────────
-    function assignColor(albumId) {
-      if (albumColorMap[albumId] !== undefined) return;
-      for (let i = 0; i < COLORS.length; i++) {
-        if (!usedColorIndices.has(i)) {
-          albumColorMap[albumId] = i;
-          usedColorIndices.add(i);
-          return;
-        }
-      }
-      albumColorMap[albumId] = Object.keys(albumColorMap).length % COLORS.length;
+    function assignColor(id) {
+      if (albumColorMap[id] !== undefined) return;
+      for (let i = 0; i < COLORS.length; i++) { if (!usedColorIndices.has(i)) { albumColorMap[id] = i; usedColorIndices.add(i); return; } }
+      albumColorMap[id] = Object.keys(albumColorMap).length % COLORS.length;
     }
-
-    function releaseColor(albumId) {
-      if (albumColorMap[albumId] !== undefined) {
-        usedColorIndices.delete(albumColorMap[albumId]);
-        delete albumColorMap[albumId];
-      }
-    }
+    function releaseColor(id) { if (albumColorMap[id] !== undefined) { usedColorIndices.delete(albumColorMap[id]); delete albumColorMap[id]; } }
 
     function renderChips() {
-      const container = document.getElementById("history-chips");
-      container.innerHTML = [...activeAlbumIds].map(id => {
+      const c = document.getElementById("history-chips");
+      c.innerHTML = [...activeAlbumIds].map(id => {
         const { shortName, albumName, artist } = albumNames[id] || {};
         const color = COLORS[albumColorMap[id] ?? 0].border;
-        const title = artist && albumName ? `${artist} — ${albumName}` : (albumName || id);
-        return `<span class="album-chip" title="${esc(title)}">
-          <span class="chip-dot" style="background:${color}"></span>
-          ${esc(shortName || albumName || id)}
-          <button class="chip-remove" data-album-id="${esc(id)}">×</button>
-        </span>`;
+        const ttl = artist && albumName ? `${artist} — ${albumName}` : (albumName || id);
+        return `<span class="album-chip" title="${esc(ttl)}"><span class="chip-dot" style="background:${color}"></span>${esc(shortName||albumName||id)}<button class="chip-remove" data-album-id="${esc(id)}">×</button></span>`;
       }).join("");
-      container.querySelectorAll(".chip-remove").forEach(btn => {
-        btn.addEventListener("click", e => {
-          e.stopPropagation();
-          removeAlbum(btn.dataset.albumId);
-        });
-      });
+      c.querySelectorAll(".chip-remove").forEach(btn => btn.addEventListener("click", e => { e.stopPropagation(); removeAlbum(btn.dataset.albumId); }));
     }
 
     async function addAlbum(albumId, artist, albumName, shortName) {
       const panel = document.getElementById("history-panel");
       const status = document.getElementById("history-status");
       const wrap = document.getElementById("history-canvas-wrap");
-
-      panel.style.display = "block";
-      panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
-
+      panel.style.display = "block"; panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
       if (!albumDataCache[albumId]) {
-        pendingFetches++;
-        status.textContent = "Loading…";
-        status.className = "";
-        wrap.style.display = "none";
+        pendingFetches++; status.textContent = "Loading…"; status.className = ""; wrap.style.display = "none";
         try {
           const [histRes, matchRes] = await Promise.all([
             fetch(`${API_BASE_URL}/score-history/${encodeURIComponent(albumId)}`),
@@ -437,132 +365,57 @@
           if (!histRes.ok) throw new Error(`HTTP ${histRes.status}`);
           const data = await histRes.json();
           const matchList = matchRes.ok ? (await matchRes.json()).matches : [];
-          const matchByDate = {};
-          for (const m of matchList) matchByDate[m.date] = true;
+          const matchByDate = {}; for (const m of matchList) matchByDate[m.date] = true;
           const resolvedShortName = data.album?.['short-name'] || shortName || albumName;
           albumNames[albumId] = { artist, albumName, shortName: resolvedShortName };
           albumDataCache[albumId] = { artist, albumName, shortName: resolvedShortName, history: data.history, matchByDate, matchList };
         } catch (e) {
-          activeAlbumIds.delete(albumId);
-          releaseColor(albumId);
-          status.textContent = `Failed to load history: ${e.message}`;
-          status.className = "error";
-          pendingFetches--;
-          renderChips();
+          activeAlbumIds.delete(albumId); releaseColor(albumId);
+          status.textContent = `Failed to load history: ${e.message}`; status.className = "error";
+          pendingFetches--; renderChips();
           if (focalAlbumId === albumId) focalAlbumId = [...activeAlbumIds][0] || null;
-          renderMatchPane();
-          if (activeAlbumIds.size === 0) return;
-          rebuildChart();
-          return;
+          renderMatchPane(); if (activeAlbumIds.size === 0) return; rebuildChart(); return;
         }
         pendingFetches--;
       }
-
-      rebuildChart();
-      if (albumId === focalAlbumId) renderMatchPane();
+      rebuildChart(); if (albumId === focalAlbumId) renderMatchPane();
     }
 
     function removeAlbum(albumId) {
-      activeAlbumIds.delete(albumId);
-      releaseColor(albumId);
-      if (activeAlbumIds.size === 0) {
-        closeHistory();
-        return;
-      }
-      if (focalAlbumId === albumId) {
-        focalAlbumId = [...activeAlbumIds][0] || null;
-        renderMatchPane();
-      }
-      renderChips();
-      rebuildChart();
+      activeAlbumIds.delete(albumId); releaseColor(albumId);
+      if (activeAlbumIds.size === 0) { closeHistory(); return; }
+      if (focalAlbumId === albumId) { focalAlbumId = [...activeAlbumIds][0] || null; renderMatchPane(); }
+      renderChips(); rebuildChart();
     }
 
     function rebuildChart() {
       const status = document.getElementById("history-status");
       const wrap = document.getElementById("history-canvas-wrap");
       const canvas = document.getElementById("history-canvas");
-
       if (activeChart) { activeChart.destroy(); activeChart = null; }
       if (activeAlbumIds.size === 0) return;
-
       const ready = [...activeAlbumIds].filter(id => albumDataCache[id]);
       if (ready.length === 0) return;
-
-      const allDates = [...new Set(
-        ready.flatMap(id => albumDataCache[id].history.map(h => h.date))
-      )].sort();
-
+      const allDates = [...new Set(ready.flatMap(id => albumDataCache[id].history.map(h => h.date)))].sort();
       const datasets = ready.map(id => {
-        const { artist, albumName, shortName, history, matchByDate } = albumDataCache[id];
+        const { albumName, shortName, history, matchByDate } = albumDataCache[id];
         const scoreByDate = Object.fromEntries(history.map(h => [h.date, h.score]));
         const color = COLORS[albumColorMap[id] ?? 0];
-        return {
-          label: shortName || albumName,
-          data: allDates.map(d => scoreByDate[d] ?? null),
-          borderColor: color.border,
-          backgroundColor: color.bg,
-          tension: 0.2,
-          spanGaps: true,
-          pointRadius: ctx => matchByDate[allDates[ctx.dataIndex]] ? 4 : 0,
-          pointHoverRadius: ctx => matchByDate[allDates[ctx.dataIndex]] ? 6 : 4,
-          yAxisID: "yScore",
-          _matchByDate: matchByDate,
-        };
+        return { label: shortName||albumName, data: allDates.map(d => scoreByDate[d] ?? null), borderColor: color.border, backgroundColor: color.bg, tension: 0.2, spanGaps: true, pointStyle: ctx => matchByDate[allDates[ctx.dataIndex]] ? 'rectRot' : 'circle', pointBackgroundColor: color.border, pointRadius: ctx => matchByDate[allDates[ctx.dataIndex]] ? 6 : 0, pointHoverRadius: ctx => matchByDate[allDates[ctx.dataIndex]] ? 8 : 4, yAxisID: "yScore", _matchByDate: matchByDate };
       });
-
       document.getElementById("history-title").textContent = "Score History";
-
-      if (pendingFetches === 0) {
-        status.textContent = "";
-        wrap.style.display = "block";
-      }
-
+      if (pendingFetches === 0) { status.textContent = ""; wrap.style.display = "block"; }
       renderChips();
-
       activeChart = new Chart(canvas, {
-        type: "line",
-        data: { labels: allDates, datasets },
+        type: "line", data: { labels: allDates, datasets },
         options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          onClick: (evt, _active, chart) => {
-            const nearest = chart.getElementsAtEventForMode(evt, 'nearest', { intersect: false }, true);
-            if (nearest.length > 0) setFocalAlbum(ready[nearest[0].datasetIndex]);
-          },
+          responsive: true, maintainAspectRatio: false,
+          onClick: (evt, _active, chart) => { const n = chart.getElementsAtEventForMode(evt, 'nearest', { intersect: false }, true); if (n.length > 0) setFocalAlbum(ready[n[0].datasetIndex]); },
           interaction: { mode: "index", intersect: false },
-          plugins: {
-            legend: { display: false },
-            tooltip: {
-              backgroundColor: '#16161f',
-              borderColor: 'rgba(200, 168, 75, 0.4)',
-              borderWidth: 1,
-              titleColor: '#c8a84b',
-              bodyColor: '#eeeef4',
-              padding: 10,
-            },
-          },
+          plugins: { legend: { display: false }, tooltip: { backgroundColor: '#FFFFFF', borderColor: '#1A1A2E', borderWidth: 2, titleColor: '#7C3AED', bodyColor: '#1A1A2E', padding: 10 } },
           scales: {
-            x: {
-              ticks: {
-                maxRotation: 45,
-                autoSkip: true,
-                maxTicksLimit: 10,
-                color: '#9898a8',
-                font: { family: "'Inter', sans-serif", size: 11 },
-              },
-              grid: { color: 'rgba(152, 152, 168, 0.1)' },
-              border: { color: 'rgba(152, 152, 168, 0.2)' },
-            },
-            yScore: {
-              type: "linear",
-              position: "left",
-              min: -1.5,
-              max: 1.5,
-              title: { display: true, text: "Score", color: '#9898a8', font: { family: "'Inter', sans-serif", size: 11 } },
-              ticks: { color: '#9898a8', font: { family: "'Inter', sans-serif", size: 11 } },
-              grid: { color: 'rgba(152, 152, 168, 0.1)' },
-              border: { color: 'rgba(152, 152, 168, 0.2)' },
-            },
+            x: { ticks: { maxRotation: 45, autoSkip: true, maxTicksLimit: 10, color: '#5A5A72', font: { family: "'Poppins', sans-serif", size: 11 } }, grid: { color: 'rgba(26,26,46,0.07)' }, border: { color: 'rgba(26,26,46,0.15)' } },
+            yScore: { type: "linear", position: "left", min: -1.5, max: 1.5, title: { display: true, text: "Score", color: '#5A5A72', font: { family: "'Poppins', sans-serif", size: 11 } }, ticks: { color: '#5A5A72', font: { family: "'Poppins', sans-serif", size: 11 } }, grid: { color: 'rgba(26,26,46,0.07)' }, border: { color: 'rgba(26,26,46,0.15)' } },
           },
         },
       });
@@ -574,182 +427,101 @@
       document.getElementById("match-list").innerHTML = "";
       document.getElementById("match-title").textContent = "Match History";
       if (activeChart) { activeChart.destroy(); activeChart = null; }
-      activeAlbumIds.clear();
-      albumColorMap = {};
-      usedColorIndices = new Set();
-      focalAlbumId = null;
-      matchResultCache = {};
+      activeAlbumIds.clear(); albumColorMap = {}; usedColorIndices = new Set(); focalAlbumId = null; matchResultCache = {};
     }
 
-    // ── Match History Pane ────────────────────────────────────────────────────
-    function setFocalAlbum(albumId) {
-      focalAlbumId = albumId;
-      renderMatchPane();
-    }
+    function setFocalAlbum(albumId) { focalAlbumId = albumId; renderMatchPane(); }
 
     function renderMatchPane() {
       const listEl = document.getElementById("match-list");
       const statusEl = document.getElementById("match-status");
       const titleEl = document.getElementById("match-title");
-      if (!focalAlbumId || !albumDataCache[focalAlbumId]) {
-        titleEl.textContent = "Match History";
-        listEl.innerHTML = "";
-        statusEl.textContent = focalAlbumId ? "Loading…" : "";
-        return;
-      }
-      const { shortName, albumName } = albumDataCache[focalAlbumId];
-      titleEl.textContent = "Match History — " + albumName;
-      statusEl.textContent = "";
-      const { matchList } = albumDataCache[focalAlbumId];
-      if (!matchList || matchList.length === 0) {
-        listEl.innerHTML = "";
-        statusEl.textContent = "No matches on record.";
-        return;
-      }
+      if (!focalAlbumId || !albumDataCache[focalAlbumId]) { titleEl.textContent = "Match History"; listEl.innerHTML = ""; statusEl.textContent = focalAlbumId ? "Loading…" : ""; return; }
+      const { albumName, matchList } = albumDataCache[focalAlbumId];
+      titleEl.textContent = "Match History — " + albumName; statusEl.textContent = "";
+      if (!matchList || matchList.length === 0) { listEl.innerHTML = ""; statusEl.textContent = "No matches on record."; return; }
       const sorted = [...matchList].reverse();
       listEl.innerHTML = sorted.map(({ match_id, date }) => `
         <div class="match-row" data-match-id="${esc(match_id)}">
-          <button class="match-toggle">
-            <span>${esc(date)}</span>
-            <span class="match-arrow">&#9658;</span>
-          </button>
+          <button class="match-toggle"><span>${esc(date)}</span><span class="match-arrow">&#9658;</span></button>
           <div class="match-detail"></div>
         </div>`).join("");
       listEl.querySelectorAll(".match-row").forEach(row => {
-        const matchId = row.dataset.matchId;
-        const toggleBtn = row.querySelector(".match-toggle");
-        const detailEl = row.querySelector(".match-detail");
-        toggleBtn.addEventListener("click", () => toggleMatchRow(matchId, toggleBtn, detailEl));
+        const matchId = row.dataset.matchId; const btn = row.querySelector(".match-toggle"); const det = row.querySelector(".match-detail");
+        btn.addEventListener("click", () => toggleMatchRow(matchId, btn, det));
       });
-      const firstRow = listEl.querySelector(".match-row");
-      if (firstRow) {
-        toggleMatchRow(firstRow.dataset.matchId, firstRow.querySelector(".match-toggle"), firstRow.querySelector(".match-detail"));
-      }
+      const first = listEl.querySelector(".match-row");
+      if (first) toggleMatchRow(first.dataset.matchId, first.querySelector(".match-toggle"), first.querySelector(".match-detail"));
     }
 
-    async function toggleMatchRow(matchId, toggleBtn, detailEl) {
-      const isOpen = toggleBtn.classList.contains("open");
-      if (isOpen) {
-        toggleBtn.classList.remove("open");
-        detailEl.classList.remove("open");
-        return;
-      }
-      toggleBtn.classList.add("open");
-      detailEl.classList.add("open");
-      if (matchResultCache[matchId]) {
-        renderMatchDetail(matchId, detailEl);
-        return;
-      }
-      detailEl.textContent = "Loading…";
+    async function toggleMatchRow(matchId, btn, det) {
+      const isOpen = btn.classList.contains("open");
+      if (isOpen) { btn.classList.remove("open"); det.classList.remove("open"); return; }
+      btn.classList.add("open"); det.classList.add("open");
+      if (matchResultCache[matchId]) { renderMatchDetail(matchId, det); return; }
+      det.textContent = "Loading…";
       try {
         const res = await fetch(`${API_BASE_URL}/results/${encodeURIComponent(matchId)}`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-        matchResultCache[matchId] = data.ranking;
-        renderMatchDetail(matchId, detailEl);
-      } catch (e) {
-        detailEl.textContent = `Error: ${e.message}`;
-      }
+        matchResultCache[matchId] = (await res.json()).ranking; renderMatchDetail(matchId, det);
+      } catch (e) { det.textContent = `Error: ${e.message}`; }
     }
 
-    function renderMatchDetail(matchId, detailEl) {
-      const ranking = matchResultCache[matchId] || [];
-      detailEl.innerHTML = ranking.map(item => {
-        const isFocal = item.id === focalAlbumId;
-        return `<div class="ranking-item${isFocal ? " focal" : ""}">
+    function renderMatchDetail(matchId, det) {
+      det.innerHTML = (matchResultCache[matchId] || []).map(item => `
+        <div class="ranking-item${item.id === focalAlbumId ? " focal" : ""}">
           <span class="ranking-num">${item.rank}.</span>
-          <button class="ranking-album-btn"
-                  data-id="${esc(item.id)}"
-                  data-artist="${esc(item.artist)}"
-                  data-album="${esc(item.album)}"
-                  data-short="${esc(item['short-name'] || '')}">
+          <button class="ranking-album-btn" data-id="${esc(item.id)}" data-artist="${esc(item.artist)}" data-album="${esc(item.album)}" data-short="${esc(item['short-name']||'')}">
             ${esc(item.artist)} — ${esc(item.album)}
           </button>
-        </div>`;
-      }).join("");
-      detailEl.querySelectorAll(".ranking-album-btn").forEach(btn => {
-        btn.addEventListener("click", () => {
-          const id = btn.dataset.id;
-          const artist = btn.dataset.artist;
-          const albumName = btn.dataset.album;
-          const shortName = btn.dataset.short;
-          if (!activeAlbumIds.has(id)) {
-            albumNames[id] = { artist, albumName, shortName };
-            activeAlbumIds.add(id);
-            assignColor(id);
-            renderChips();
-          }
+        </div>`).join("");
+      det.querySelectorAll(".ranking-album-btn").forEach(b => {
+        b.addEventListener("click", () => {
+          const { id, artist, album: albumName, short: shortName } = b.dataset;
+          if (!activeAlbumIds.has(id)) { albumNames[id] = { artist, albumName, shortName }; activeAlbumIds.add(id); assignColor(id); renderChips(); }
           addAlbum(id, artist, albumName, shortName);
         });
       });
     }
 
-    // ── Init ──────────────────────────────────────────────────────────────────
     async function load() {
       document.getElementById("content").innerHTML = '<p id="loading">Loading…</p>';
       try {
         const res = await fetch(`${API_BASE_URL}/scores`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
-
-        document.getElementById("date").textContent = `Official Standings — ${data.date}`;
-
-        allScores = [...data.scores]
-          .sort((a, b) => b.score - a.score)
-          .map((s, i) => ({ ...s, rank: i + 1 }));
-
+        document.getElementById("date").textContent = `MOST RECENT MATCH: ${data.date}`;
+        allScores = [...data.scores].sort((a, b) => b.score - a.score).map((s, i) => ({ ...s, rank: i + 1 }));
         document.getElementById("content").innerHTML = `
           <table>
-            <thead>
-              <tr>
-                <th>Rank</th>
-                <th class="sortable" data-col="artist">Artist <span class="sort-indicator">↕</span></th>
-                <th class="sortable" data-col="album">Album <span class="sort-indicator">↕</span></th>
-                <th class="sortable" data-col="score">Score <span class="sort-indicator">↕</span></th>
-              </tr>
-            </thead>
+            <thead><tr>
+              <th>Rank</th>
+              <th class="sortable" data-col="artist">Artist <span class="sort-indicator">↕</span></th>
+              <th class="sortable" data-col="album">Album <span class="sort-indicator">↕</span></th>
+              <th class="sortable" data-col="score">Score <span class="sort-indicator">↕</span></th>
+            </tr></thead>
             <tbody></tbody>
           </table>`;
-
         renderTable();
-
         document.querySelector("#content tbody").addEventListener("click", e => {
-          const row = e.target.closest("tr[data-album-id]");
-          if (!row) return;
+          const row = e.target.closest("tr[data-album-id]"); if (!row) return;
           const { albumId, artist, albumName, shortName } = row.dataset;
-          if (activeAlbumIds.has(albumId)) {
-            setFocalAlbum(albumId);
-            return;
-          }
+          if (activeAlbumIds.has(albumId)) { setFocalAlbum(albumId); return; }
           albumNames[albumId] = { artist, albumName, shortName };
-          activeAlbumIds.add(albumId);
-          assignColor(albumId);
-          renderChips();
-          addAlbum(albumId, artist, albumName, shortName);
-          setFocalAlbum(albumId);
+          activeAlbumIds.add(albumId); assignColor(albumId); renderChips();
+          addAlbum(albumId, artist, albumName, shortName); setFocalAlbum(albumId);
         });
-
         document.querySelectorAll("#content th[data-col]").forEach(th => {
           th.addEventListener("click", () => {
             const col = th.dataset.col;
-            if (currentSort.col === col) {
-              currentSort.dir = currentSort.dir === "asc" ? "desc" : "asc";
-            } else {
-              currentSort = { col, dir: col === "score" ? "desc" : "asc" };
-            }
+            currentSort = currentSort.col === col ? { col, dir: currentSort.dir === "asc" ? "desc" : "asc" } : { col, dir: col === "score" ? "desc" : "asc" };
             renderTable();
           });
         });
-
-        document.getElementById("search").addEventListener("input", e => {
-          currentFilter = e.target.value;
-          renderTable();
-        });
-
+        document.getElementById("search").addEventListener("input", e => { currentFilter = e.target.value; renderTable(); });
         document.getElementById("history-close").addEventListener("click", closeHistory);
       } catch (e) {
-        document.getElementById("content").innerHTML =
-          `<div id="error">Scoreboards Unavailable — ${esc(e.message)}</div>`;
+        document.getElementById("content").innerHTML = `<div id="error">Scoreboards Unavailable — ${esc(e.message)}</div>`;
       }
     }
 
