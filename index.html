@@ -107,6 +107,43 @@
     #history-status.error { color: #c00; }
     #history-canvas-wrap { position: relative; height: 260px; }
 
+    /* ── History two-pane layout ─────────────────────────────────────────────── */
+    #history-panes { display: flex; gap: 1.5rem; align-items: flex-start; }
+    #score-pane { flex: 55 0 0%; min-width: 0; }
+    #match-pane { flex: 45 0 0%; min-width: 0; }
+    #match-status { color: #666; font-size: 0.875rem; margin: 0; }
+    #match-status.error { color: #c00; }
+    #match-list {
+      border: 1px solid #eee; border-radius: 4px;
+      overflow-y: auto; max-height: 310px;
+    }
+    .match-row { border-bottom: 1px solid #eee; }
+    .match-row:last-child { border-bottom: none; }
+    .match-toggle {
+      width: 100%; display: flex; justify-content: space-between; align-items: center;
+      padding: 0.45rem 0.75rem;
+      background: none; border: none; cursor: pointer;
+      text-align: left; font: inherit; font-size: 0.875rem; color: #222;
+    }
+    .match-toggle:hover { background: #f5f5f5; }
+    .match-toggle.open { background: #f0f4ff; }
+    .match-arrow { color: #bbb; font-size: 0.7em; transition: transform 0.15s; }
+    .match-toggle.open .match-arrow { transform: rotate(90deg); }
+    .match-detail { padding: 0.25rem 0.75rem 0.5rem; display: none; }
+    .match-detail.open { display: block; }
+    .ranking-item { padding: 0.2rem 0; display: flex; gap: 0.5rem; align-items: baseline; font-size: 0.85rem; }
+    .ranking-num { color: #999; min-width: 1.2rem; text-align: right; flex-shrink: 0; }
+    .ranking-album-btn {
+      background: none; border: none; padding: 0; cursor: pointer;
+      color: #333; font: inherit; text-align: left;
+    }
+    .ranking-album-btn:hover { text-decoration: underline; color: #4a7fd4; }
+    .ranking-item.focal .ranking-album-btn { font-weight: 600; }
+    @media (max-width: 600px) {
+      #history-panes { flex-direction: column; }
+      #score-pane, #match-pane { flex: none; width: 100%; }
+    }
+
   </style>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 </head>
@@ -120,11 +157,20 @@
   <div id="content"></div>
   <div id="history-panel">
     <button id="history-close" aria-label="Close history">×</button>
-    <h2 id="history-title"></h2>
-    <div id="history-chips"></div>
-    <p id="history-status"></p>
-    <div id="history-canvas-wrap">
-      <canvas id="history-canvas"></canvas>
+    <div id="history-panes">
+      <div id="score-pane">
+        <h2 id="history-title"></h2>
+        <div id="history-chips"></div>
+        <p id="history-status"></p>
+        <div id="history-canvas-wrap">
+          <canvas id="history-canvas"></canvas>
+        </div>
+      </div>
+      <div id="match-pane">
+        <h2 id="match-title">Match history</h2>
+        <p id="match-status"></p>
+        <div id="match-list"></div>
+      </div>
     </div>
   </div>
 
@@ -155,6 +201,8 @@
     let usedColorIndices = new Set();
     let pendingFetches = 0;
     let activeChart = null;
+    let focalAlbumId = null;
+    let matchResultCache = {};
 
     // ── Utilities ─────────────────────────────────────────────────────────────
     function esc(s) {
@@ -275,7 +323,7 @@
           for (const m of matchList) matchByDate[m.date] = true;
           const resolvedShortName = data.album?.['short-name'] || shortName || albumName;
           albumNames[albumId] = { artist, albumName, shortName: resolvedShortName };
-          albumDataCache[albumId] = { artist, albumName, shortName: resolvedShortName, history: data.history, matchByDate };
+          albumDataCache[albumId] = { artist, albumName, shortName: resolvedShortName, history: data.history, matchByDate, matchList };
         } catch (e) {
           activeAlbumIds.delete(albumId);
           releaseColor(albumId);
@@ -283,6 +331,8 @@
           status.className = "error";
           pendingFetches--;
           renderChips();
+          if (focalAlbumId === albumId) focalAlbumId = [...activeAlbumIds][0] || null;
+          renderMatchPane();
           if (activeAlbumIds.size === 0) return;
           rebuildChart();
           return;
@@ -291,6 +341,7 @@
       }
 
       rebuildChart();
+      renderMatchPane();
     }
 
     function removeAlbum(albumId) {
@@ -299,6 +350,10 @@
       if (activeAlbumIds.size === 0) {
         closeHistory();
         return;
+      }
+      if (focalAlbumId === albumId) {
+        focalAlbumId = [...activeAlbumIds][0] || null;
+        renderMatchPane();
       }
       renderChips();
       rebuildChart();
@@ -368,10 +423,114 @@
     function closeHistory() {
       document.getElementById("history-panel").style.display = "none";
       document.getElementById("history-chips").innerHTML = "";
+      document.getElementById("match-list").innerHTML = "";
+      document.getElementById("match-title").textContent = "Match history";
       if (activeChart) { activeChart.destroy(); activeChart = null; }
       activeAlbumIds.clear();
       albumColorMap = {};
       usedColorIndices = new Set();
+      focalAlbumId = null;
+      matchResultCache = {};
+    }
+
+    // ── Match History Pane ────────────────────────────────────────────────────
+    function setFocalAlbum(albumId) {
+      focalAlbumId = albumId;
+      renderMatchPane();
+    }
+
+    function renderMatchPane() {
+      const listEl = document.getElementById("match-list");
+      const statusEl = document.getElementById("match-status");
+      const titleEl = document.getElementById("match-title");
+      if (!focalAlbumId || !albumDataCache[focalAlbumId]) {
+        titleEl.textContent = "Match history";
+        listEl.innerHTML = "";
+        statusEl.textContent = focalAlbumId ? "Loading…" : "";
+        return;
+      }
+      const { shortName, albumName } = albumDataCache[focalAlbumId];
+      titleEl.textContent = "Match history — " + albumName;
+      statusEl.textContent = "";
+      const { matchList } = albumDataCache[focalAlbumId];
+      if (!matchList || matchList.length === 0) {
+        listEl.innerHTML = "";
+        statusEl.textContent = "No matches found.";
+        return;
+      }
+      const sorted = [...matchList].reverse();
+      listEl.innerHTML = sorted.map(({ match_id, date }) => `
+        <div class="match-row" data-match-id="${esc(match_id)}">
+          <button class="match-toggle">
+            <span>${esc(date)}</span>
+            <span class="match-arrow">&#9658;</span>
+          </button>
+          <div class="match-detail"></div>
+        </div>`).join("");
+      listEl.querySelectorAll(".match-row").forEach(row => {
+        const matchId = row.dataset.matchId;
+        const toggleBtn = row.querySelector(".match-toggle");
+        const detailEl = row.querySelector(".match-detail");
+        toggleBtn.addEventListener("click", () => toggleMatchRow(matchId, toggleBtn, detailEl));
+      });
+    }
+
+    async function toggleMatchRow(matchId, toggleBtn, detailEl) {
+      const isOpen = toggleBtn.classList.contains("open");
+      if (isOpen) {
+        toggleBtn.classList.remove("open");
+        detailEl.classList.remove("open");
+        return;
+      }
+      toggleBtn.classList.add("open");
+      detailEl.classList.add("open");
+      if (matchResultCache[matchId]) {
+        renderMatchDetail(matchId, detailEl);
+        return;
+      }
+      detailEl.textContent = "Loading…";
+      try {
+        const res = await fetch(`${API_BASE_URL}/results/${encodeURIComponent(matchId)}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        matchResultCache[matchId] = data.ranking;
+        renderMatchDetail(matchId, detailEl);
+      } catch (e) {
+        detailEl.textContent = `Error: ${e.message}`;
+      }
+    }
+
+    function renderMatchDetail(matchId, detailEl) {
+      const ranking = matchResultCache[matchId] || [];
+      detailEl.innerHTML = ranking.map(item => {
+        const isFocal = item.id === focalAlbumId;
+        return `<div class="ranking-item${isFocal ? " focal" : ""}">
+          <span class="ranking-num">${item.rank}.</span>
+          <button class="ranking-album-btn"
+                  data-id="${esc(item.id)}"
+                  data-artist="${esc(item.artist)}"
+                  data-album="${esc(item.album)}"
+                  data-short="${esc(item['short-name'] || '')}">
+            ${esc(item.artist)} — ${esc(item.album)}
+          </button>
+        </div>`;
+      }).join("");
+      detailEl.querySelectorAll(".ranking-album-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const id = btn.dataset.id;
+          const artist = btn.dataset.artist;
+          const albumName = btn.dataset.album;
+          const shortName = btn.dataset.short;
+          if (!activeAlbumIds.has(id)) {
+            albumNames[id] = { artist, albumName, shortName };
+            activeAlbumIds.add(id);
+            assignColor(id);
+            renderChips();
+          }
+          addAlbum(id, artist, albumName, shortName);
+          setFocalAlbum(id);
+        });
+      });
     }
 
     // ── Init ──────────────────────────────────────────────────────────────────
@@ -407,12 +566,16 @@
           const row = e.target.closest("tr[data-album-id]");
           if (!row) return;
           const { albumId, artist, albumName, shortName } = row.dataset;
-          if (activeAlbumIds.has(albumId)) return;
+          if (activeAlbumIds.has(albumId)) {
+            setFocalAlbum(albumId);
+            return;
+          }
           albumNames[albumId] = { artist, albumName, shortName };
           activeAlbumIds.add(albumId);
           assignColor(albumId);
           renderChips();
           addAlbum(albumId, artist, albumName, shortName);
+          setFocalAlbum(albumId);
         });
 
         document.querySelectorAll("#content th[data-col]").forEach(th => {
