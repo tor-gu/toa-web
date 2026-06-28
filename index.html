@@ -3,160 +3,278 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Tournament of Albums</title>
+  <title>Tournament of Albums — Official Standings</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@500;600&family=Inter:wght@400;500&display=swap" rel="stylesheet">
   <style>
-    /* ── Base & layout ─────────────────────────────────────────────────────── */
-    body {
-      font-family: system-ui, sans-serif;
-      max-width: 800px;
-      margin: 2rem auto;
-      padding: 0 1rem;
-      color: #222;
-      background: #fafafa;
-    }
-    h1 { margin-bottom: 0.25rem; }
-    #date { color: #666; margin-bottom: 1.5rem; font-size: 0.9rem; }
-    #loading { color: #666; font-size: 0.9rem; }
-    #error {
-      color: #c00;
-      background: #fff0f0;
-      border: 1px solid #f0c0c0;
-      padding: 0.75rem 1rem;
-      border-radius: 4px;
-    }
-    #wip-notice {
-      background: #fff8e1; border: 1px solid #f0c040; border-radius: 4px;
-      color: #7a5c00; font-size: 0.9rem; font-weight: 500;
-      padding: 0.6rem 1rem; margin-bottom: 1.25rem;
+    /* ── Tokens ──────────────────────────────────────────────────────────────── */
+    :root {
+      --arena-black: #0d0d14;
+      --surface: #16161f;
+      --surface-hover: #1e1e2b;
+      --gold: #c8a84b;
+      --gold-bright: #f0cc6e;
+      --silver: #9898a8;
+      --white: #eeeef4;
+      --border-gold: rgba(200, 168, 75, 0.25);
+      --border-subtle: rgba(152, 152, 168, 0.25);
     }
 
-    /* ── Table ─────────────────────────────────────────────────────────────── */
+    /* ── Base & layout ───────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 0 1rem 4rem;
+      color: var(--white);
+      background: var(--arena-black);
+    }
+    :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+    /* ── Header ──────────────────────────────────────────────────────────────── */
+    .page-header {
+      text-align: center;
+      padding: 2.5rem 0 1rem;
+    }
+    .title-rule {
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--gold) 20%, var(--gold-bright) 50%, var(--gold) 80%, transparent);
+      margin: 0.4rem 0;
+    }
+    h1 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(1.6rem, 5.5vw, 3rem);
+      letter-spacing: 0.08em;
+      margin: 0.2rem 0;
+      color: var(--gold-bright);
+      line-height: 1;
+      text-shadow: 0 0 60px rgba(240, 204, 110, 0.25);
+    }
+    #date {
+      font-family: 'Oswald', sans-serif;
+      font-size: 0.8rem;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--silver);
+      margin: 0.6rem 0 0;
+    }
+
+    /* ── WIP notice ──────────────────────────────────────────────────────────── */
+    #wip-notice {
+      background: #fff8e1;
+      border: 1px solid #f0c040;
+      border-radius: 4px;
+      color: #7a5c00;
+      font-size: 0.9rem;
+      font-weight: 500;
+      padding: 0.6rem 1rem;
+      margin: 1.25rem 0;
+    }
+
+    /* ── Loading / Error ─────────────────────────────────────────────────────── */
+    #loading { color: var(--silver); font-size: 0.9rem; }
+    #error {
+      font-family: 'Oswald', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 500;
+      letter-spacing: 0.05em;
+      color: #d07070;
+      background: rgba(139, 26, 26, 0.15);
+      border: 1px solid rgba(139, 26, 26, 0.4);
+      padding: 0.75rem 1rem;
+    }
+
+    /* ── Section labels ──────────────────────────────────────────────────────── */
+    .section-label {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.3rem;
+      letter-spacing: 0.15em;
+      color: var(--silver);
+      border-bottom: 1px solid var(--border-subtle);
+      padding-bottom: 0.35rem;
+      margin: 0 0 0.75rem;
+    }
+
+    /* ── Table ───────────────────────────────────────────────────────────────── */
     #search-wrap { margin-bottom: 0.75rem; }
     #search {
       width: 100%;
-      box-sizing: border-box;
-      padding: 0.5rem 0.75rem;
-      border: 1px solid #ddd;
-      border-radius: 4px;
+      padding: 0.55rem 0.75rem;
+      border: 1px solid var(--border-subtle);
       font-size: 0.9rem;
-      font-family: inherit;
-      background: #fff;
-      color: #222;
+      font-family: 'Inter', sans-serif;
+      background: var(--surface);
+      color: var(--white);
     }
-    #search:focus { outline: none; border-color: #aaa; }
+    #search::placeholder { color: var(--silver); }
+    #search:focus { outline: none; border-color: var(--gold); }
+
     #content { max-height: 420px; overflow-y: auto; }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      background: #fff;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    }
+    #content::-webkit-scrollbar { width: 3px; }
+    #content::-webkit-scrollbar-track { background: transparent; }
+    #content::-webkit-scrollbar-thumb { background: var(--gold); }
+
+    table { width: 100%; border-collapse: collapse; background: var(--surface); }
     th {
       text-align: left;
       padding: 0.6rem 0.8rem;
-      border-bottom: 2px solid #ddd;
-      font-size: 0.8rem;
+      border-bottom: 1px solid var(--gold);
+      font-family: 'Oswald', sans-serif;
+      font-size: 0.75rem;
+      font-weight: 600;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: #555;
-      position: sticky; top: 0; z-index: 1; background: #fff;
+      letter-spacing: 0.12em;
+      color: var(--gold);
+      position: sticky; top: 0; z-index: 1;
+      background: var(--surface);
     }
-    td {
-      padding: 0.55rem 0.8rem;
-      border-bottom: 1px solid #eee;
-    }
+    td { padding: 0.55rem 0.8rem; border-bottom: 1px solid var(--border-subtle); font-size: 0.9rem; }
     tr:last-child td { border-bottom: none; }
-    tr:hover td { background: #f5f5f5; }
-    .rank { color: #999; width: 2.5rem; }
-    .score { font-variant-numeric: tabular-nums; }
+    tr:hover td { background: var(--surface-hover); transition: background 0.1s; }
+    .rank {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1rem;
+      color: var(--silver);
+      width: 2.5rem;
+      letter-spacing: 0.05em;
+    }
+    .score { font-variant-numeric: tabular-nums; color: var(--gold); font-weight: 500; }
     .clickable-row { cursor: pointer; }
     th.sortable { cursor: pointer; user-select: none; }
-    th.sortable:hover { color: #222; }
-    .sort-indicator { margin-left: 0.3em; font-size: 0.75em; color: #bbb; }
-    th.sort-active .sort-indicator { color: #444; }
+    th.sortable:hover { color: var(--gold-bright); }
+    .sort-indicator { margin-left: 0.3em; font-size: 0.75em; color: rgba(152, 152, 168, 0.4); }
+    th.sort-active .sort-indicator { color: var(--gold-bright); }
 
-    /* ── History panel ──────────────────────────────────────────────────────── */
+    /* ── History panel ───────────────────────────────────────────────────────── */
     #history-panel {
       display: none;
       margin-top: 1.5rem;
-      background: #fff;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      background: var(--surface);
+      border: 1px solid var(--border-subtle);
       padding: 1rem 1.25rem 1.25rem;
       position: relative;
     }
-    #history-panel h2 { margin: 0 0 0.75rem; font-size: 1rem; font-weight: 600; }
+    .history-panel-label {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.1rem;
+      letter-spacing: 0.15em;
+      color: var(--silver);
+      margin: 0 0 0.75rem;
+    }
+    #history-panel h2 {
+      margin: 0 0 0.6rem;
+      font-family: 'Oswald', sans-serif;
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--gold);
+    }
     #history-close {
       position: absolute; top: 0.75rem; right: 1rem;
-      cursor: pointer; font-size: 1.2rem; color: #999;
+      cursor: pointer; font-size: 1.2rem; color: var(--silver);
       background: none; border: none; line-height: 1;
     }
-    #history-close:hover { color: #333; }
+    #history-close:hover { color: var(--white); }
     #history-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.75rem; }
     .album-chip {
       display: inline-flex; align-items: center; gap: 0.35rem;
-      background: #f0f0f0; border-radius: 3px;
-      padding: 0.2rem 0.4rem 0.2rem 0.5rem; font-size: 0.85rem;
+      background: var(--arena-black);
+      border: 1px solid var(--border-subtle);
+      padding: 0.2rem 0.4rem 0.2rem 0.5rem;
+      font-size: 0.8rem;
+      font-family: 'Oswald', sans-serif;
+      font-weight: 500;
+      letter-spacing: 0.03em;
+      color: var(--white);
     }
     .chip-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
     .chip-remove {
       background: none; border: none; cursor: pointer;
-      color: #999; font-size: 0.9rem; padding: 0; line-height: 1;
+      color: var(--silver); font-size: 0.9rem; padding: 0; line-height: 1;
     }
-    .chip-remove:hover { color: #333; }
-    #history-status { color: #666; font-size: 0.9rem; margin: 0; }
-    #history-status.error { color: #c00; }
+    .chip-remove:hover { color: var(--white); }
+    #history-status { color: var(--silver); font-size: 0.85rem; margin: 0; }
+    #history-status.error { color: #d07070; }
     #history-canvas-wrap { position: relative; height: 260px; }
 
     /* ── History two-pane layout ─────────────────────────────────────────────── */
     #history-panes { display: flex; gap: 1.5rem; align-items: flex-start; }
     #score-pane { flex: 55 0 0%; min-width: 0; }
     #match-pane { flex: 45 0 0%; min-width: 0; }
-    #match-status { color: #666; font-size: 0.875rem; margin: 0; }
-    #match-status.error { color: #c00; }
-    #match-list {
-      border: 1px solid #eee; border-radius: 4px;
-      overflow-y: auto; max-height: 310px;
-    }
-    .match-row { border-bottom: 1px solid #eee; }
+    #match-status { color: var(--silver); font-size: 0.875rem; margin: 0; }
+    #match-status.error { color: #d07070; }
+    #match-list { border: 1px solid var(--border-subtle); overflow-y: auto; max-height: 310px; }
+    .match-row { border-bottom: 1px solid var(--border-subtle); }
     .match-row:last-child { border-bottom: none; }
     .match-toggle {
       width: 100%; display: flex; justify-content: space-between; align-items: center;
       padding: 0.45rem 0.75rem;
       background: none; border: none; cursor: pointer;
-      text-align: left; font: inherit; font-size: 0.875rem; color: #222;
+      text-align: left;
+      font-family: 'Oswald', sans-serif;
+      font-size: 0.78rem;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      color: var(--silver);
     }
-    .match-toggle:hover { background: #f5f5f5; }
-    .match-toggle.open { background: #f0f4ff; }
-    .match-arrow { color: #bbb; font-size: 0.7em; transition: transform 0.15s; }
+    .match-toggle:hover { background: rgba(200, 168, 75, 0.06); color: var(--white); }
+    .match-toggle.open { background: rgba(200, 168, 75, 0.1); color: var(--gold); }
+    .match-arrow { color: rgba(152, 152, 168, 0.4); font-size: 0.7em; transition: transform 0.15s; }
     .match-toggle.open .match-arrow { transform: rotate(90deg); }
     .match-detail { padding: 0.25rem 0.75rem 0.5rem; display: none; }
     .match-detail.open { display: block; }
     .ranking-item { padding: 0.2rem 0; display: flex; gap: 0.5rem; align-items: baseline; font-size: 0.85rem; }
-    .ranking-num { color: #999; min-width: 1.2rem; text-align: right; flex-shrink: 0; }
+    .ranking-num {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 0.9rem;
+      color: var(--silver);
+      min-width: 1.2rem;
+      text-align: right;
+      flex-shrink: 0;
+    }
     .ranking-album-btn {
       background: none; border: none; padding: 0; cursor: pointer;
-      color: #333; font: inherit; text-align: left;
+      color: var(--white); font: inherit; text-align: left;
     }
-    .ranking-album-btn:hover { text-decoration: underline; color: #4a7fd4; }
-    .ranking-item.focal .ranking-album-btn { font-weight: 600; }
+    .ranking-album-btn:hover { text-decoration: underline; color: var(--gold); }
+    .ranking-item.focal .ranking-album-btn { font-weight: 600; color: var(--gold-bright); }
+
+    /* ── Responsive ──────────────────────────────────────────────────────────── */
     @media (max-width: 600px) {
       #history-panes { flex-direction: column; }
       #score-pane, #match-pane { flex: none; width: 100%; }
     }
 
+    /* ── Reduced motion ──────────────────────────────────────────────────────── */
+    @media (prefers-reduced-motion: reduce) {
+      .match-arrow { transition: none; }
+    }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 </head>
 <body>
-  <h1>Tournament of Albums</h1>
-  <div id="date"></div>
+  <div class="page-header">
+    <div class="title-rule"></div>
+    <h1>Tournament of Albums</h1>
+    <div class="title-rule"></div>
+    <div id="date"></div>
+  </div>
+
   <p id="wip-notice">This is a work in progress.</p>
+
+  <div class="section-label">The Contenders</div>
   <div id="search-wrap">
-    <input type="text" id="search" placeholder="Search artist or album…" aria-label="Search artist or album">
+    <input type="text" id="search" placeholder="Search the field…" aria-label="Search artist or album">
   </div>
   <div id="content"></div>
+
   <div id="history-panel">
     <button id="history-close" aria-label="Close history">×</button>
+    <div class="history-panel-label">Performance Records</div>
     <div id="history-panes">
       <div id="score-pane">
         <h2 id="history-title"></h2>
@@ -167,7 +285,7 @@
         </div>
       </div>
       <div id="match-pane">
-        <h2 id="match-title">Match history</h2>
+        <h2 id="match-title">Match History</h2>
         <p id="match-status"></p>
         <div id="match-list"></div>
       </div>
@@ -179,12 +297,12 @@
     const API_BASE_URL = "https://REDACTED.execute-api.us-east-1.amazonaws.com/v1"; // terraform output api_base_url
 
     const COLORS = [
-      { border: "#4a7fd4", bg: "rgba(74,127,212,0.08)" },
-      { border: "#e06c2e", bg: "rgba(224,108,46,0.08)" },
-      { border: "#2ea06c", bg: "rgba(46,160,108,0.08)" },
-      { border: "#9b59b6", bg: "rgba(155,89,182,0.08)" },
-      { border: "#c0392b", bg: "rgba(192,57,43,0.08)" },
-      { border: "#16a085", bg: "rgba(22,160,133,0.08)" },
+      { border: "#6b9fe8", bg: "rgba(107,159,232,0.12)" },
+      { border: "#e8824a", bg: "rgba(232,130,74,0.12)" },
+      { border: "#4ec98c", bg: "rgba(78,201,140,0.12)" },
+      { border: "#b87ede", bg: "rgba(184,126,222,0.12)" },
+      { border: "#e85f5f", bg: "rgba(232,95,95,0.12)" },
+      { border: "#30c8b0", bg: "rgba(48,200,176,0.12)" },
     ];
 
     // ── State ─────────────────────────────────────────────────────────────────
@@ -392,7 +510,7 @@
         };
       });
 
-      document.getElementById("history-title").textContent = "Score history";
+      document.getElementById("history-title").textContent = "Score History";
 
       if (pendingFetches === 0) {
         status.textContent = "";
@@ -414,11 +532,37 @@
           interaction: { mode: "index", intersect: false },
           plugins: {
             legend: { display: false },
-            tooltip: {},
+            tooltip: {
+              backgroundColor: '#16161f',
+              borderColor: 'rgba(200, 168, 75, 0.4)',
+              borderWidth: 1,
+              titleColor: '#c8a84b',
+              bodyColor: '#eeeef4',
+              padding: 10,
+            },
           },
           scales: {
-            x: { ticks: { maxRotation: 45, autoSkip: true, maxTicksLimit: 10 } },
-            yScore: { type: "linear", position: "left", min: -1.5, max: 1.5, title: { display: true, text: "Score" } },
+            x: {
+              ticks: {
+                maxRotation: 45,
+                autoSkip: true,
+                maxTicksLimit: 10,
+                color: '#9898a8',
+                font: { family: "'Inter', sans-serif", size: 11 },
+              },
+              grid: { color: 'rgba(152, 152, 168, 0.1)' },
+              border: { color: 'rgba(152, 152, 168, 0.2)' },
+            },
+            yScore: {
+              type: "linear",
+              position: "left",
+              min: -1.5,
+              max: 1.5,
+              title: { display: true, text: "Score", color: '#9898a8', font: { family: "'Inter', sans-serif", size: 11 } },
+              ticks: { color: '#9898a8', font: { family: "'Inter', sans-serif", size: 11 } },
+              grid: { color: 'rgba(152, 152, 168, 0.1)' },
+              border: { color: 'rgba(152, 152, 168, 0.2)' },
+            },
           },
         },
       });
@@ -428,7 +572,7 @@
       document.getElementById("history-panel").style.display = "none";
       document.getElementById("history-chips").innerHTML = "";
       document.getElementById("match-list").innerHTML = "";
-      document.getElementById("match-title").textContent = "Match history";
+      document.getElementById("match-title").textContent = "Match History";
       if (activeChart) { activeChart.destroy(); activeChart = null; }
       activeAlbumIds.clear();
       albumColorMap = {};
@@ -448,18 +592,18 @@
       const statusEl = document.getElementById("match-status");
       const titleEl = document.getElementById("match-title");
       if (!focalAlbumId || !albumDataCache[focalAlbumId]) {
-        titleEl.textContent = "Match history";
+        titleEl.textContent = "Match History";
         listEl.innerHTML = "";
         statusEl.textContent = focalAlbumId ? "Loading…" : "";
         return;
       }
       const { shortName, albumName } = albumDataCache[focalAlbumId];
-      titleEl.textContent = "Match history — " + albumName;
+      titleEl.textContent = "Match History — " + albumName;
       statusEl.textContent = "";
       const { matchList } = albumDataCache[focalAlbumId];
       if (!matchList || matchList.length === 0) {
         listEl.innerHTML = "";
-        statusEl.textContent = "No matches found.";
+        statusEl.textContent = "No matches on record.";
         return;
       }
       const sorted = [...matchList].reverse();
@@ -548,7 +692,7 @@
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
 
-        document.getElementById("date").textContent = `Scores as of ${data.date}`;
+        document.getElementById("date").textContent = `Official Standings — ${data.date}`;
 
         allScores = [...data.scores]
           .sort((a, b) => b.score - a.score)
@@ -605,7 +749,7 @@
         document.getElementById("history-close").addEventListener("click", closeHistory);
       } catch (e) {
         document.getElementById("content").innerHTML =
-          `<div id="error">Failed to load scores: ${esc(e.message)}</div>`;
+          `<div id="error">Scoreboards Unavailable — ${esc(e.message)}</div>`;
       }
     }
 
