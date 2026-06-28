@@ -477,6 +477,10 @@
         const detailEl = row.querySelector(".match-detail");
         toggleBtn.addEventListener("click", () => toggleMatchRow(matchId, toggleBtn, detailEl));
       });
+      const firstRow = listEl.querySelector(".match-row");
+      if (firstRow) {
+        toggleMatchRow(firstRow.dataset.matchId, firstRow.querySelector(".match-toggle"), firstRow.querySelector(".match-detail"));
+      }
     }
 
     async function toggleMatchRow(matchId, toggleBtn, detailEl) {
