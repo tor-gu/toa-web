@@ -38,7 +38,6 @@
     tr:hover td { background: #f5f5f5; }
     .rank { color: #999; width: 2.5rem; }
     .score { font-variant-numeric: tabular-nums; }
-    .robustness { font-variant-numeric: tabular-nums; color: #666; }
     #loading { color: #666; font-size: 0.9rem; }
     #error {
       color: #c00;
@@ -203,7 +202,6 @@
             <td>${esc(s.artist)}</td>
             <td>${esc(s.album)}</td>
             <td class="score">${s.score.toFixed(3)}</td>
-            <td class="robustness">${s.robustness.toFixed(2)}</td>
           </tr>`).join("");
 
         document.getElementById("content").innerHTML = `
@@ -214,7 +212,6 @@
                 <th>Artist</th>
                 <th>Album</th>
                 <th>Score</th>
-                <th>Robustness</th>
               </tr>
             </thead>
             <tbody>${rows}</tbody>
