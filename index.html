@@ -102,6 +102,23 @@
       color: #7a5c00; font-size: 0.9rem; font-weight: 500;
       padding: 0.6rem 1rem; margin-bottom: 1.25rem;
     }
+    #search-wrap { margin-bottom: 0.75rem; }
+    #search {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 0.5rem 0.75rem;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 0.9rem;
+      font-family: inherit;
+      background: #fff;
+      color: #222;
+    }
+    #search:focus { outline: none; border-color: #aaa; }
+    th.sortable { cursor: pointer; user-select: none; }
+    th.sortable:hover { color: #222; }
+    .sort-indicator { margin-left: 0.3em; font-size: 0.75em; color: #bbb; }
+    th.sort-active .sort-indicator { color: #444; }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 </head>
@@ -109,6 +126,9 @@
   <h1>Tournament of Albums</h1>
   <div id="date"></div>
   <p id="wip-notice">This is a work in progress.</p>
+  <div id="search-wrap">
+    <input type="text" id="search" placeholder="Search artist or album…" aria-label="Search artist or album">
+  </div>
   <div id="content"></div>
   <div id="history-panel">
     <button id="history-close" aria-label="Close history">×</button>
@@ -141,6 +161,9 @@
     let pendingFetches = 0;
     let activeChart = null;
     let tooltipTimeout = null;
+    let allScores = [];
+    let currentFilter = "";
+    let currentSort = { col: null, dir: "asc" };
 
     function assignColor(albumId) {
       if (albumColorMap[albumId] !== undefined) return;
@@ -181,6 +204,49 @@
       });
     }
 
+    function renderTable() {
+      const filter = currentFilter.toLowerCase();
+      let rows = allScores;
+      if (filter) {
+        rows = rows.filter(s =>
+          s.artist.toLowerCase().includes(filter) ||
+          s.album.toLowerCase().includes(filter)
+        );
+      }
+      if (currentSort.col) {
+        const { col, dir } = currentSort;
+        rows = [...rows].sort((a, b) => {
+          if (col === "score") return dir === "asc" ? a.score - b.score : b.score - a.score;
+          const av = col === "artist" ? a.artist : a.album;
+          const bv = col === "artist" ? b.artist : b.album;
+          return dir === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
+        });
+      }
+
+      document.querySelector("#content tbody").innerHTML = rows.map(s => `
+        <tr class="clickable-row"
+            data-album-id="${esc(s.id)}"
+            data-artist="${esc(s.artist)}"
+            data-album-name="${esc(s.album)}"
+            data-short-name="${esc(s['short-name'])}">
+          <td class="rank">${s.rank}</td>
+          <td>${esc(s.artist)}</td>
+          <td>${esc(s.album)}</td>
+          <td class="score">${s.score.toFixed(3)}</td>
+        </tr>`).join("");
+
+      document.querySelectorAll("#content th[data-col]").forEach(th => {
+        const ind = th.querySelector(".sort-indicator");
+        if (th.dataset.col === currentSort.col) {
+          th.classList.add("sort-active");
+          ind.textContent = currentSort.dir === "asc" ? "↑" : "↓";
+        } else {
+          th.classList.remove("sort-active");
+          ind.textContent = "↕";
+        }
+      });
+    }
+
     async function load() {
       document.getElementById("content").innerHTML = '<p id="loading">Loading…</p>';
       try {
@@ -190,32 +256,24 @@
 
         document.getElementById("date").textContent = `Scores as of ${data.date}`;
 
-        const sorted = [...data.scores].sort((a, b) => b.score - a.score);
-
-        const rows = sorted.map((s, i) => `
-          <tr class="clickable-row"
-              data-album-id="${esc(s.id)}"
-              data-artist="${esc(s.artist)}"
-              data-album-name="${esc(s.album)}"
-              data-short-name="${esc(s['short-name'])}">
-            <td class="rank">${i + 1}</td>
-            <td>${esc(s.artist)}</td>
-            <td>${esc(s.album)}</td>
-            <td class="score">${s.score.toFixed(3)}</td>
-          </tr>`).join("");
+        allScores = [...data.scores]
+          .sort((a, b) => b.score - a.score)
+          .map((s, i) => ({ ...s, rank: i + 1 }));
 
         document.getElementById("content").innerHTML = `
           <table>
             <thead>
               <tr>
-                <th>#</th>
-                <th>Artist</th>
-                <th>Album</th>
-                <th>Score</th>
+                <th>Rank</th>
+                <th class="sortable" data-col="artist">Artist <span class="sort-indicator">↕</span></th>
+                <th class="sortable" data-col="album">Album <span class="sort-indicator">↕</span></th>
+                <th class="sortable" data-col="score">Score <span class="sort-indicator">↕</span></th>
               </tr>
             </thead>
-            <tbody>${rows}</tbody>
+            <tbody></tbody>
           </table>`;
+
+        renderTable();
 
         document.querySelector("#content tbody").addEventListener("click", e => {
           const row = e.target.closest("tr[data-album-id]");
@@ -227,6 +285,23 @@
           assignColor(albumId);
           renderChips();
           addAlbum(albumId, artist, albumName, shortName);
+        });
+
+        document.querySelectorAll("#content th[data-col]").forEach(th => {
+          th.addEventListener("click", () => {
+            const col = th.dataset.col;
+            if (currentSort.col === col) {
+              currentSort.dir = currentSort.dir === "asc" ? "desc" : "asc";
+            } else {
+              currentSort = { col, dir: col === "score" ? "desc" : "asc" };
+            }
+            renderTable();
+          });
+        });
+
+        document.getElementById("search").addEventListener("input", e => {
+          currentFilter = e.target.value;
+          renderTable();
         });
 
         document.getElementById("history-close").addEventListener("click", closeHistory);
