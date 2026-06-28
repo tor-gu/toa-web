@@ -341,7 +341,7 @@
       }
 
       rebuildChart();
-      renderMatchPane();
+      if (albumId === focalAlbumId) renderMatchPane();
     }
 
     function removeAlbum(albumId) {
@@ -407,6 +407,10 @@
         options: {
           responsive: true,
           maintainAspectRatio: false,
+          onClick: (evt, _active, chart) => {
+            const nearest = chart.getElementsAtEventForMode(evt, 'nearest', { intersect: false }, true);
+            if (nearest.length > 0) setFocalAlbum(ready[nearest[0].datasetIndex]);
+          },
           interaction: { mode: "index", intersect: false },
           plugins: {
             legend: { display: false },
@@ -528,7 +532,6 @@
             renderChips();
           }
           addAlbum(id, artist, albumName, shortName);
-          setFocalAlbum(id);
         });
       });
     }
