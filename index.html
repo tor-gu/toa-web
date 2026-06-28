@@ -107,25 +107,6 @@
     #history-status.error { color: #c00; }
     #history-canvas-wrap { position: relative; height: 260px; }
 
-    /* ── Chart tooltip ──────────────────────────────────────────────────────── */
-    #chart-tooltip {
-      position: absolute; pointer-events: auto;
-      background: rgba(0,0,0,0.82); color: #fff;
-      border-radius: 4px; padding: 0.45rem 0.65rem;
-      font-size: 0.78rem; line-height: 1.55;
-      display: none; max-width: 320px; z-index: 10;
-    }
-    .tt-item { margin-bottom: 0.4rem; }
-    .tt-item:last-child { margin-bottom: 0; }
-    .tt-match { margin-top: 0.25rem; }
-    .tt-match-header { color: #aaa; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; }
-    .tt-row.tt-current { color: #ffd; white-space: nowrap; }
-    .tt-row.tt-in-chart { color: #888; white-space: nowrap; }
-    .tt-row.tt-clickable {
-      color: #7fc8ff; cursor: pointer; white-space: nowrap;
-      text-decoration: underline; text-underline-offset: 2px;
-    }
-    .tt-row.tt-clickable:hover { color: #c5e4ff; }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 </head>
@@ -144,7 +125,6 @@
     <p id="history-status"></p>
     <div id="history-canvas-wrap">
       <canvas id="history-canvas"></canvas>
-      <div id="chart-tooltip"></div>
     </div>
   </div>
 
@@ -175,7 +155,6 @@
     let usedColorIndices = new Set();
     let pendingFetches = 0;
     let activeChart = null;
-    let tooltipTimeout = null;
 
     // ── Utilities ─────────────────────────────────────────────────────────────
     function esc(s) {
@@ -292,13 +271,8 @@
           if (!histRes.ok) throw new Error(`HTTP ${histRes.status}`);
           const data = await histRes.json();
           const matchList = matchRes.ok ? (await matchRes.json()).matches : [];
-          const resultsArr = await Promise.all(
-            matchList.map(m =>
-              fetch(`${API_BASE_URL}/results/${encodeURIComponent(m.match_id)}`).then(r => r.json())
-            )
-          );
           const matchByDate = {};
-          for (const r of resultsArr) matchByDate[r.date] = r.ranking;
+          for (const m of matchList) matchByDate[m.date] = true;
           const resolvedShortName = data.album?.['short-name'] || shortName || albumName;
           albumNames[albumId] = { artist, albumName, shortName: resolvedShortName };
           albumDataCache[albumId] = { artist, albumName, shortName: resolvedShortName, history: data.history, matchByDate };
@@ -328,65 +302,6 @@
       }
       renderChips();
       rebuildChart();
-    }
-
-    function externalTooltipHandler({ chart, tooltip }) {
-      const tooltipEl = document.getElementById("chart-tooltip");
-
-      if (tooltip.opacity === 0) {
-        clearTimeout(tooltipTimeout);
-        tooltipTimeout = setTimeout(() => { tooltipEl.style.display = "none"; }, 300);
-        return;
-      }
-      clearTimeout(tooltipTimeout);
-
-      const items = tooltip.dataPoints || [];
-      const date = items[0]?.label || "";
-
-      let html = "";
-      for (const item of items) {
-        const ds = item.dataset;
-        const score = item.parsed.y != null ? item.parsed.y.toFixed(3) : "—";
-        html += `<div class="tt-item"><span style="color:${ds.borderColor}">●</span> <strong>${esc(ds._artist)} — ${esc(ds._albumName)}</strong>: ${score}`;
-        const ranking = ds._matchByDate?.[date];
-        if (ranking) {
-          html += `<div class="tt-match"><div class="tt-match-header">Match:</div>`;
-          for (const r of ranking) {
-            const isCurrent = r.id === ds._albumId;
-            const inChart = !isCurrent && activeAlbumIds.has(r.id);
-            const marker = isCurrent ? "→" : "&nbsp;";
-            if (isCurrent) {
-              html += `<div class="tt-row tt-current">${marker} ${r.rank}. ${esc(r.artist)} — ${esc(r.album)}</div>`;
-            } else if (inChart) {
-              html += `<div class="tt-row tt-in-chart">${marker} ${r.rank}. ${esc(r.artist)} — ${esc(r.album)}</div>`;
-            } else {
-              html += `<div class="tt-row tt-clickable" data-album-id="${esc(r.id)}" data-artist="${esc(r.artist)}" data-album-name="${esc(r.album)}">${marker} ${r.rank}. ${esc(r.artist)} — ${esc(r.album)}</div>`;
-            }
-          }
-          html += "</div>";
-        }
-        html += "</div>";
-      }
-
-      tooltipEl.innerHTML = html;
-      tooltipEl.querySelectorAll(".tt-clickable").forEach(el => {
-        el.addEventListener("click", () => {
-          const { albumId, artist, albumName } = el.dataset;
-          if (activeAlbumIds.has(albumId)) return;
-          albumNames[albumId] = { artist, albumName, shortName: "" };
-          activeAlbumIds.add(albumId);
-          assignColor(albumId);
-          renderChips();
-          addAlbum(albumId, artist, albumName, "");
-        });
-      });
-
-      tooltipEl.style.display = "block";
-      const cw = chart.canvas.parentElement.offsetWidth;
-      let left = tooltip.caretX + 12;
-      if (left + tooltipEl.offsetWidth > cw) left = tooltip.caretX - tooltipEl.offsetWidth - 12;
-      tooltipEl.style.left = Math.max(0, left) + "px";
-      tooltipEl.style.top = Math.max(0, tooltip.caretY - tooltipEl.offsetHeight / 2) + "px";
     }
 
     function rebuildChart() {
@@ -419,9 +334,6 @@
           pointHoverRadius: ctx => matchByDate[allDates[ctx.dataIndex]] ? 6 : 4,
           yAxisID: "yScore",
           _matchByDate: matchByDate,
-          _albumId: id,
-          _artist: artist,
-          _albumName: albumName,
         };
       });
 
@@ -443,7 +355,7 @@
           interaction: { mode: "index", intersect: false },
           plugins: {
             legend: { display: false },
-            tooltip: { enabled: false, external: externalTooltipHandler },
+            tooltip: {},
           },
           scales: {
             x: { ticks: { maxRotation: 45, autoSkip: true, maxTicksLimit: 10 } },
@@ -454,10 +366,8 @@
     }
 
     function closeHistory() {
-      clearTimeout(tooltipTimeout);
       document.getElementById("history-panel").style.display = "none";
       document.getElementById("history-chips").innerHTML = "";
-      document.getElementById("chart-tooltip").style.display = "none";
       if (activeChart) { activeChart.destroy(); activeChart = null; }
       activeAlbumIds.clear();
       albumColorMap = {};
@@ -530,13 +440,6 @@
     }
 
     load();
-
-    const _ttEl = document.getElementById("chart-tooltip");
-    _ttEl.addEventListener("mouseenter", () => clearTimeout(tooltipTimeout));
-    _ttEl.addEventListener("mouseleave", () => {
-      clearTimeout(tooltipTimeout);
-      tooltipTimeout = setTimeout(() => { _ttEl.style.display = "none"; }, 300);
-    });
   </script>
 </body>
 </html>
