@@ -22,12 +22,23 @@
     *, *::before, *::after { box-sizing: border-box; }
     body {
       font-family: 'Poppins', system-ui, sans-serif;
-      max-width: 800px;
+      max-width: 1100px;
       margin: 0 auto;
       padding: 0 1rem 4rem;
       color: var(--ink);
       background: var(--paper);
     }
+    .page-layout { display: flex; gap: 1.75rem; align-items: flex-start; }
+    #recent-matches-panel {
+      flex: 0 0 260px;
+      background: var(--surface);
+      border: 2px solid var(--ink);
+      border-radius: 12px;
+      padding: 1rem 1.1rem 1.1rem;
+      box-shadow: 4px 4px 0 var(--cyan);
+    }
+    #recent-matches-list { border: 2px solid var(--ink); border-radius: 8px; }
+    .page-main { flex: 1 1 auto; min-width: 0; }
     :focus-visible { outline: 3px solid var(--violet); outline-offset: 2px; }
 
     /* ── Compact header ─────────────────────────────────────── */
@@ -227,10 +238,29 @@
     .ranking-album-btn { background: none; border: none; padding: 0; cursor: pointer; color: var(--ink); font: inherit; text-align: left; font-weight: 500; }
     .ranking-album-btn:hover { text-decoration: underline; color: var(--violet); }
     .ranking-item.focal .ranking-album-btn { font-weight: 700; color: var(--violet); }
+    .ranking-delta {
+      margin-left: auto;
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.05rem 0.4rem;
+      border-radius: 6px;
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+    .ranking-delta.new { background: var(--yellow); color: var(--ink); }
+    .ranking-delta.up { color: var(--cyan); }
+    .ranking-delta.down { color: var(--pink); }
+    .ranking-delta.flat { color: var(--ink-soft); }
 
     @media (max-width: 600px) {
       #history-panes { flex-direction: column; }
       #score-pane, #match-pane { flex: none; width: 100%; }
+    }
+    @media (max-width: 880px) {
+      .page-layout { flex-direction: column; }
+      #recent-matches-panel { flex: none; width: 100%; order: 2; }
+      .page-main { order: 1; }
     }
     @media (prefers-reduced-motion: reduce) { .match-arrow { transition: none; } }
   </style>
@@ -248,28 +278,38 @@
     <div id="date"></div>
   </div>
 
-  <p id="wip-notice">NOTE: This is a work in progress.</p>
+  <div class="page-layout">
+    <aside id="recent-matches-panel">
+      <div class="section-label">Recent Matches</div>
+      <p id="recent-matches-status"></p>
+      <div id="recent-matches-list"></div>
+    </aside>
 
-  <div class="section-label">Current Rankings</div>
-  <div id="search-wrap">
-    <input type="text" id="search" placeholder="Search artist or album…" aria-label="Search artist or album">
-  </div>
-  <div id="content"></div>
+    <div class="page-main">
+      <p id="wip-notice">NOTE: This is a work in progress.</p>
 
-  <div id="history-panel">
-    <button id="history-close" aria-label="Close history">×</button>
-    <div class="history-panel-label">History</div>
-    <div id="history-panes">
-      <div id="score-pane">
-        <h2 id="history-title"></h2>
-        <div id="history-chips"></div>
-        <p id="history-status"></p>
-        <div id="history-canvas-wrap"><canvas id="history-canvas"></canvas></div>
+      <div class="section-label">Current Rankings</div>
+      <div id="search-wrap">
+        <input type="text" id="search" placeholder="Search artist or album…" aria-label="Search artist or album">
       </div>
-      <div id="match-pane">
-        <h2 id="match-title">Match History</h2>
-        <p id="match-status"></p>
-        <div id="match-list"></div>
+      <div id="content"></div>
+
+      <div id="history-panel">
+        <button id="history-close" aria-label="Close history">×</button>
+        <div class="history-panel-label">History</div>
+        <div id="history-panes">
+          <div id="score-pane">
+            <h2 id="history-title"></h2>
+            <div id="history-chips"></div>
+            <p id="history-status"></p>
+            <div id="history-canvas-wrap"><canvas id="history-canvas"></canvas></div>
+          </div>
+          <div id="match-pane">
+            <h2 id="match-title">Match History</h2>
+            <p id="match-status"></p>
+            <div id="match-list"></div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -465,34 +505,78 @@
       if (first) toggleMatchRow(first.dataset.matchId, first.querySelector(".match-toggle"), first.querySelector(".match-detail"));
     }
 
-    async function toggleMatchRow(matchId, btn, det) {
+    async function toggleMatchRow(matchId, btn, det, opts = {}) {
       const isOpen = btn.classList.contains("open");
       if (isOpen) { btn.classList.remove("open"); det.classList.remove("open"); return; }
       btn.classList.add("open"); det.classList.add("open");
-      if (matchResultCache[matchId]) { renderMatchDetail(matchId, det); return; }
+      if (matchResultCache[matchId]) { renderMatchDetail(matchId, det, opts); return; }
       det.textContent = "Loading…";
       try {
         const res = await fetch(`${API_BASE_URL}/results/${encodeURIComponent(matchId)}`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        matchResultCache[matchId] = (await res.json()).ranking; renderMatchDetail(matchId, det);
+        matchResultCache[matchId] = (await res.json()).ranking; renderMatchDetail(matchId, det, opts);
       } catch (e) { det.textContent = `Error: ${e.message}`; }
     }
 
-    function renderMatchDetail(matchId, det) {
+    function formatDelta(item) {
+      if (item.is_new) return "New";
+      if (item.score_delta == null) return "–";
+      const sign = item.score_delta >= 0 ? "+" : "";
+      return `${sign}${item.score_delta.toFixed(3)}`;
+    }
+
+    function deltaClass(item) {
+      if (item.is_new) return "new";
+      if (item.score_delta == null) return "flat";
+      return item.score_delta > 0 ? "up" : item.score_delta < 0 ? "down" : "flat";
+    }
+
+    function renderMatchDetail(matchId, det, opts = {}) {
       det.innerHTML = (matchResultCache[matchId] || []).map(item => `
         <div class="ranking-item${item.id === focalAlbumId ? " focal" : ""}">
           <span class="ranking-num">${item.rank}.</span>
           <button class="ranking-album-btn" data-id="${esc(item.id)}" data-artist="${esc(item.artist)}" data-album="${esc(item.album)}" data-short="${esc(item['short-name']||'')}">
             ${esc(item.artist)} — ${esc(item.album)}
           </button>
+          ${opts.showDelta ? `<span class="ranking-delta ${deltaClass(item)}">${formatDelta(item)}</span>` : ""}
         </div>`).join("");
       det.querySelectorAll(".ranking-album-btn").forEach(b => {
         b.addEventListener("click", () => {
           const { id, artist, album: albumName, short: shortName } = b.dataset;
           if (!activeAlbumIds.has(id)) { albumNames[id] = { artist, albumName, shortName }; activeAlbumIds.add(id); assignColor(id); renderChips(); }
-          addAlbum(id, artist, albumName, shortName);
+          addAlbum(id, artist, albumName, shortName); setFocalAlbum(id);
         });
       });
+    }
+
+    function renderRecentMatches(matches) {
+      const listEl = document.getElementById("recent-matches-list");
+      listEl.innerHTML = matches.map(({ match_id, date }) => `
+        <div class="match-row" data-match-id="${esc(match_id)}">
+          <button class="match-toggle"><span>${esc(date)}</span><span class="match-arrow">&#9658;</span></button>
+          <div class="match-detail"></div>
+        </div>`).join("");
+      listEl.querySelectorAll(".match-row").forEach(row => {
+        const matchId = row.dataset.matchId; const btn = row.querySelector(".match-toggle"); const det = row.querySelector(".match-detail");
+        btn.addEventListener("click", () => toggleMatchRow(matchId, btn, det, { showDelta: true }));
+      });
+      const first = listEl.querySelector(".match-row");
+      if (first) toggleMatchRow(first.dataset.matchId, first.querySelector(".match-toggle"), first.querySelector(".match-detail"), { showDelta: true });
+    }
+
+    async function loadRecentMatches() {
+      const statusEl = document.getElementById("recent-matches-status");
+      statusEl.textContent = "Loading…";
+      try {
+        const res = await fetch(`${API_BASE_URL}/results?sort=-date&limit=5`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const { matches } = await res.json();
+        statusEl.textContent = "";
+        if (!matches || matches.length === 0) { statusEl.textContent = "No matches on record."; return; }
+        renderRecentMatches(matches);
+      } catch (e) {
+        statusEl.textContent = `Error: ${e.message}`;
+      }
     }
 
     async function load() {
@@ -537,6 +621,7 @@
     }
 
     load();
+    loadRecentMatches();
   </script>
 </body>
 </html>
