@@ -522,8 +522,9 @@
     function formatDelta(item) {
       if (item.is_new) return "New";
       if (item.score_delta == null) return "–";
-      const sign = item.score_delta >= 0 ? "+" : "";
-      return `${sign}${item.score_delta.toFixed(3)}`;
+      if (item.score_delta === 0) return "0.000";
+      const icon = item.score_delta > 0 ? "▲" : "▼";
+      return `${icon} ${Math.abs(item.score_delta).toFixed(3)}`;
     }
 
     function deltaClass(item) {
