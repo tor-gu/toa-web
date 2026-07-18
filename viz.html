@@ -8,57 +8,12 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+  <link rel="stylesheet" href="theme.css">
+  <script src="theme.js" defer></script>
   <style>
-    :root {
-      --paper: #FBF7F0;
-      --surface: #FFFFFF;
-      --pink: #FF3D7F;
-      --cyan: #1EC8E0;
-      --yellow: #FFD23F;
-      --violet: #7C3AED;
-      --ink: #1A1A2E;
-      --ink-soft: #5A5A72;
-      --line: rgba(26, 26, 46, 0.1);
-    }
-    *, *::before, *::after { box-sizing: border-box; }
-    body {
-      font-family: 'Poppins', system-ui, sans-serif;
-      max-width: 1100px;
-      margin: 0 auto;
-      padding: 0 1rem 3rem;
-      color: var(--ink);
-      background: var(--paper);
-    }
-    :focus-visible { outline: 3px solid var(--violet); outline-offset: 2px; }
-
-    .page-nav { padding: 0.9rem 0 0; }
-    .nav-link {
-      display: inline-block;
-      font-size: 0.78rem; font-weight: 700;
-      text-transform: uppercase; letter-spacing: 0.08em;
-      color: var(--ink); text-decoration: none;
-      background: var(--surface);
-      border: 2px solid var(--ink); border-radius: 20px;
-      padding: 0.3rem 0.85rem;
-      box-shadow: 3px 3px 0 var(--cyan);
-    }
-    .nav-link:hover { color: var(--violet); box-shadow: 3px 3px 0 var(--pink); }
-
-    .page-header { text-align: center; padding: 0.5rem 1rem 0.9rem; }
-    h1 {
-      font-family: 'Bungee', sans-serif;
-      font-size: clamp(1.4rem, 4.5vw, 2.1rem);
-      margin: 0;
-      line-height: 1;
-    }
-    #subtitle {
-      font-size: 0.72rem;
-      font-weight: 600;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: var(--ink-soft);
-      margin: 0.45rem 0 0;
-    }
+    /* Tokens, reset, body base, focus, festive header, and nav pill live in
+       the shared theme.css. Page-specific rules only. */
+    .page-nav { padding-top: 0.5rem; }
 
     #loading { color: var(--ink-soft); font-size: 0.9rem; font-weight: 600; }
     #error {
@@ -142,6 +97,7 @@
 <body>
   <nav class="page-nav"><a class="nav-link" href="index.html">&larr; Rankings</a></nav>
   <header class="page-header">
+    <div class="header-deco"></div>
     <h1>SCORE HISTORY</h1>
   </header>
 

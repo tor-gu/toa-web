@@ -8,27 +8,12 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="alternate" type="application/atom+xml" title="Tournament of Albums — Match Results" href="https://toa-api.tor-gu.com/feed">
+  <link rel="stylesheet" href="theme.css">
+  <script src="theme.js" defer></script>
   <style>
-    :root {
-      --paper: #FBF7F0;
-      --surface: #FFFFFF;
-      --pink: #FF3D7F;
-      --cyan: #1EC8E0;
-      --yellow: #FFD23F;
-      --violet: #7C3AED;
-      --ink: #1A1A2E;
-      --ink-soft: #5A5A72;
-      --line: rgba(26, 26, 46, 0.1);
-    }
-    *, *::before, *::after { box-sizing: border-box; }
-    body {
-      font-family: 'Poppins', system-ui, sans-serif;
-      max-width: 1100px;
-      margin: 0 auto;
-      padding: 0 1rem 4rem;
-      color: var(--ink);
-      background: var(--paper);
-    }
+    /* Tokens, reset, body base, focus, festive header, nav pill, and
+       .section-label live in the shared theme.css. Page-specific rules only. */
+    body { padding-bottom: 4rem; }
     .page-layout { display: flex; gap: 1.75rem; align-items: flex-start; }
     #recent-matches-panel {
       flex: 0 0 260px;
@@ -40,36 +25,8 @@
     }
     #recent-matches-list { border: 2px solid var(--ink); border-radius: 8px; }
     .page-main { flex: 1 1 auto; min-width: 0; }
-    :focus-visible { outline: 3px solid var(--violet); outline-offset: 2px; }
 
-    /* ── Compact header ─────────────────────────────────────── */
-    .page-header {
-      position: relative;
-      overflow: hidden;
-      text-align: center;
-      padding: 1.1rem 1rem 0.9rem;
-      margin-bottom: 1rem;
-    }
-    .header-deco { position: absolute; inset: 0; pointer-events: none; }
-    .header-deco svg { position: absolute; }
-    h1 {
-      position: relative;
-      font-family: 'Bungee', sans-serif;
-      font-size: clamp(1.5rem, 5vw, 2.4rem);
-      margin: 0;
-      line-height: 1;
-      letter-spacing: 0.01em;
-    }
-    .title-ch {
-      display: inline-block;
-      animation: hop 1.6s ease-in-out infinite;
-      animation-delay: calc(var(--i) * 0.07s);
-    }
-    @keyframes hop {
-      0%, 70%, 100% { transform: translateY(0); }
-      35%            { transform: translateY(-10px); }
-    }
-    @media (prefers-reduced-motion: reduce) { .title-ch { animation: none; } }
+    /* ── Header date line (page-specific) ───────────────────── */
     #date {
       position: relative;
       font-family: 'Poppins', sans-serif;
@@ -101,16 +58,6 @@
       color: #fff; background: var(--pink);
       border: 2px solid var(--ink); border-radius: 8px;
       padding: 0.75rem 1rem;
-    }
-
-    /* ── Section label ──────────────────────────────────────── */
-    .section-label {
-      font-family: 'Bungee', sans-serif;
-      font-size: 1rem;
-      color: var(--violet);
-      margin: 0 0 0.6rem;
-      padding-bottom: 0.3rem;
-      border-bottom: 3px solid var(--cyan);
     }
 
     /* ── Search ─────────────────────────────────────────────── */
@@ -186,19 +133,6 @@
       margin-bottom: 1rem;
     }
     .back-link:hover { color: var(--violet); box-shadow: 3px 3px 0 var(--pink); }
-    .nav-link {
-      display: inline-block;
-      font-family: 'Poppins', sans-serif;
-      font-size: 0.78rem; font-weight: 700;
-      text-transform: uppercase; letter-spacing: 0.08em;
-      color: var(--ink); text-decoration: none;
-      background: var(--surface);
-      border: 2px solid var(--ink); border-radius: 20px;
-      padding: 0.3rem 0.85rem;
-      box-shadow: 3px 3px 0 var(--yellow);
-    }
-    .nav-link:hover { color: var(--violet); box-shadow: 3px 3px 0 var(--pink); }
-    .page-nav { margin: 0 0 1rem; }
     #album-heading { margin: 0 0 1rem; }
     #album-artist {
       font-size: 0.78rem; font-weight: 700;
@@ -339,12 +273,7 @@
 </head>
 <body>
   <div class="page-header">
-    <div class="header-deco">
-      <svg width="48" height="20" viewBox="0 0 48 20" style="left:4%;top:18%"><path d="M2 12 Q8 2 14 12 T26 12 T38 12" fill="none" stroke="#FF3D7F" stroke-width="3" stroke-linecap="round"/></svg>
-      <svg width="40" height="16" viewBox="0 0 40 16" style="right:5%;top:14%"><path d="M2 14 L8 2 L14 14 L20 2 L26 14 L32 2 L38 14" fill="none" stroke="#1EC8E0" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      <svg width="22" height="22" viewBox="0 0 22 22" style="left:16%;bottom:6%"><circle cx="5" cy="5" r="3" fill="#7C3AED"/><circle cx="14" cy="6" r="3" fill="#FFD23F"/><circle cx="9" cy="15" r="3" fill="#1EC8E0"/></svg>
-      <svg width="20" height="20" viewBox="0 0 20 20" style="right:14%;bottom:8%"><path d="M10 2 L18 18 L2 18 Z" fill="none" stroke="#FFD23F" stroke-width="3" stroke-linejoin="round"/></svg>
-    </div>
+    <div class="header-deco"></div>
     <h1>Tournament of Albums</h1>
     <div id="date"></div>
   </div>
@@ -398,7 +327,6 @@
   </div>
 
   <script>
-    const TITLE_COLORS = ['#FF3D7F', '#1EC8E0', '#FFD23F', '#7C3AED'];
     const RANK_COLORS = ['#FF3D7F', '#1EC8E0', '#7C3AED', '#FFB400'];
     function formatRank(rank) {
       if (rank == null) return "–";
@@ -408,19 +336,6 @@
       if (rank == null) return "var(--ink-soft)";
       return RANK_COLORS[Math.floor(rank - 1) % RANK_COLORS.length];
     }
-    function animateTitle() {
-      const h1 = document.querySelector('h1');
-      const text = h1.textContent;
-      let ci = 0;
-      h1.innerHTML = [...text].map((ch, i) => {
-        if (ch === ' ') return ' ';
-        const safe = ch === '&' ? '&amp;' : ch === '<' ? '&lt;' : ch === '>' ? '&gt;' : ch;
-        const color = TITLE_COLORS[ci++ % TITLE_COLORS.length];
-        return `<span class="title-ch" style="--i:${i};color:${color}">${safe}</span>`;
-      }).join('');
-    }
-    animateTitle();
-
     const API_BASE_URL = "https://toa-api.tor-gu.com";
     const BASE_TITLE = "Tournament of Albums — Official Standings";
     const COLORS = [
