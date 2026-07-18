@@ -186,6 +186,19 @@
       margin-bottom: 1rem;
     }
     .back-link:hover { color: var(--violet); box-shadow: 3px 3px 0 var(--pink); }
+    .nav-link {
+      display: inline-block;
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.78rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      color: var(--ink); text-decoration: none;
+      background: var(--surface);
+      border: 2px solid var(--ink); border-radius: 20px;
+      padding: 0.3rem 0.85rem;
+      box-shadow: 3px 3px 0 var(--yellow);
+    }
+    .nav-link:hover { color: var(--violet); box-shadow: 3px 3px 0 var(--pink); }
+    .page-nav { margin: 0 0 1rem; }
     #album-heading { margin: 0 0 1rem; }
     #album-artist {
       font-size: 0.78rem; font-weight: 700;
@@ -337,6 +350,7 @@
   </div>
 
   <div id="view-landing">
+    <nav class="page-nav"><a class="nav-link" href="viz.html">Cool Visualization &rarr;</a></nav>
     <div class="page-layout">
       <aside id="recent-matches-panel">
         <div class="section-label">Recent Matches</div>

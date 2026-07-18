@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tournament of Albums — Score History Animation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+  <style>
+    :root {
+      --paper: #FBF7F0;
+      --surface: #FFFFFF;
+      --pink: #FF3D7F;
+      --cyan: #1EC8E0;
+      --yellow: #FFD23F;
+      --violet: #7C3AED;
+      --ink: #1A1A2E;
+      --ink-soft: #5A5A72;
+      --line: rgba(26, 26, 46, 0.1);
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      font-family: 'Poppins', system-ui, sans-serif;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 1rem 3rem;
+      color: var(--ink);
+      background: var(--paper);
+    }
+    :focus-visible { outline: 3px solid var(--violet); outline-offset: 2px; }
+
+    .page-nav { padding: 0.9rem 0 0; }
+    .nav-link {
+      display: inline-block;
+      font-size: 0.78rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      color: var(--ink); text-decoration: none;
+      background: var(--surface);
+      border: 2px solid var(--ink); border-radius: 20px;
+      padding: 0.3rem 0.85rem;
+      box-shadow: 3px 3px 0 var(--cyan);
+    }
+    .nav-link:hover { color: var(--violet); box-shadow: 3px 3px 0 var(--pink); }
+
+    .page-header { text-align: center; padding: 0.5rem 1rem 0.9rem; }
+    h1 {
+      font-family: 'Bungee', sans-serif;
+      font-size: clamp(1.4rem, 4.5vw, 2.1rem);
+      margin: 0;
+      line-height: 1;
+    }
+    #subtitle {
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+      margin: 0.45rem 0 0;
+    }
+
+    #loading { color: var(--ink-soft); font-size: 0.9rem; font-weight: 600; }
+    #error {
+      display: none;
+      font-size: 0.85rem; font-weight: 700;
+      color: #fff; background: var(--pink);
+      border: 2px solid var(--ink); border-radius: 8px;
+      padding: 0.75rem 1rem;
+    }
+
+    #viz-panel {
+      display: none;
+      background: var(--surface);
+      border: 2px solid var(--ink);
+      border-radius: 12px;
+      padding: 0.75rem;
+      box-shadow: 4px 4px 0 var(--cyan);
+    }
+    #chart { display: block; width: 100%; height: auto; }
+
+    #controls {
+      display: none;
+      align-items: center;
+      gap: 0.9rem;
+      margin-top: 0.9rem;
+      background: var(--surface);
+      border: 2px solid var(--ink);
+      border-radius: 12px;
+      padding: 0.6rem 0.9rem;
+      box-shadow: 4px 4px 0 var(--yellow);
+    }
+    #play {
+      font-family: 'Bungee', sans-serif;
+      font-size: 0.85rem;
+      color: var(--ink);
+      background: var(--yellow);
+      border: 2px solid var(--ink);
+      border-radius: 8px;
+      padding: 0.4rem 0.9rem;
+      cursor: pointer;
+      box-shadow: 2px 2px 0 var(--ink);
+      min-width: 7.5rem;
+    }
+    #play:active { transform: translate(2px, 2px); box-shadow: none; }
+    #scrubber { flex: 1 1 auto; accent-color: var(--pink); }
+    #date-label {
+      font-family: 'Bungee', sans-serif;
+      font-size: 0.9rem;
+      color: var(--violet);
+      min-width: 7.5rem;
+      text-align: right;
+    }
+
+    #tooltip {
+      display: none;
+      position: fixed;
+      pointer-events: none;
+      z-index: 10;
+      background: var(--surface);
+      border: 2px solid var(--ink);
+      border-radius: 8px;
+      box-shadow: 3px 3px 0 var(--pink);
+      padding: 0.45rem 0.7rem;
+      font-size: 0.78rem;
+      max-width: 240px;
+    }
+    #tooltip .tt-name { font-weight: 700; }
+    #tooltip .tt-artist { color: var(--ink-soft); }
+    #tooltip .tt-score { font-weight: 600; color: var(--violet); }
+    #tooltip .tt-rank { display: flex; gap: 0.35rem; white-space: nowrap; }
+    #tooltip .tt-rank-num { font-weight: 700; color: var(--violet); min-width: 1.1em; }
+
+    .axis-label {
+      font-family: 'Poppins', sans-serif;
+      font-size: 11px;
+      font-weight: 600;
+      fill: var(--ink-soft);
+    }
+  </style>
+</head>
+<body>
+  <nav class="page-nav"><a class="nav-link" href="index.html">&larr; Rankings</a></nav>
+  <header class="page-header">
+    <h1>SCORE HISTORY</h1>
+  </header>
+
+  <p id="loading">Loading results&hellip;</p>
+  <div id="error"></div>
+
+  <div id="viz-panel">
+    <svg id="chart"></svg>
+  </div>
+
+  <div id="controls">
+    <button id="play">&#9654; PLAY</button>
+    <input type="range" id="scrubber" min="0" max="1" step="0.01" value="0" aria-label="Timeline">
+    <div id="date-label"></div>
+  </div>
+
+  <div id="tooltip"></div>
+
+  <script>
+    "use strict";
+
+    const API_BASE_URL = "https://toa-api.tor-gu.com";
+
+    // ── Tunables ─────────────────────────────────────────────────────────
+    const PLAYBACK_SPEED = 2;         // date indices per second
+    const EDGE_TTL_DATES = Infinity;  // edges expire this many dates after their match
+    const EDGE_LEAD_DATES = 1;  // edges appear this many date-indices before their score transition completes
+    const NODE_RADIUS = 5;
+    const LINK_DISTANCE = 40;
+    const LINK_STRENGTH = 0.3;
+    const CHARGE_STRENGTH = -15;
+    const COLLIDE_PADDING = 2;
+    const X_HOME_STRENGTH = 0.1;      // pull toward each node's initial (home) x column
+
+    const WIDTH = 1060;
+    const HEIGHT = 640;
+    const MARGIN = { top: 20, right: 20, bottom: 20, left: 56 };
+
+    // ── State ────────────────────────────────────────────────────────────
+    let nodes = [];
+    let edges = [];       // one entry per rank-adjacent pair, sorted by date index
+    let dates = [];
+    let time = 0;         // fractional date index
+    let playing = false;
+    let lastFrame = null;
+    let edgeStart = 0;    // active edge window [edgeStart, edgeEnd)
+    let edgeEnd = 0;
+    let sim, linkForce, yScale, edgeSel, edgeHitSel, nodeSel;
+    let nodesById = new Map();
+    let matchesById = new Map();
+    let hoveredMatchId = null;
+    let hoveredNodeMatchIds = null;
+
+    const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+
+    const svg = d3.select("#chart").attr("viewBox", `0 0 ${WIDTH} ${HEIGHT}`);
+    const tooltip = document.getElementById("tooltip");
+    const scrubber = document.getElementById("scrubber");
+    const playBtn = document.getElementById("play");
+    const dateLabel = document.getElementById("date-label");
+
+    // ── Data loading ─────────────────────────────────────────────────────
+    async function load() {
+      try {
+        const data = new URLSearchParams(location.search).has("mock")
+          ? mockData()
+          : await fetchViz();
+        init(data);
+      } catch (err) {
+        document.getElementById("loading").style.display = "none";
+        const box = document.getElementById("error");
+        box.textContent = `Could not load viz data: ${err.message}`;
+        box.style.display = "block";
+      }
+    }
+
+    async function fetchViz() {
+      const res = await fetch(`${API_BASE_URL}/viz`);
+      if (!res.ok) {
+        throw new Error(res.status === 404 ? "not built yet (404)" : `HTTP ${res.status}`);
+      }
+      return res.json();
+    }
+
+    // Synthetic dataset for local development (?mock in the URL).
+    function mockData() {
+      const numAlbums = 40, numDates = 50, matchSize = 5;
+      const day0 = new Date("2024-01-05");
+      const dates = d3.range(numDates).map((i) => {
+        const d = new Date(day0); d.setDate(d.getDate() + i * 7);
+        return d.toISOString().slice(0, 10);
+      });
+      const albums = d3.range(numAlbums).map((i) => ({
+        id: `album-${i}`,
+        artist: `Artist ${i}`,
+        album: `Album ${i}`,
+        "short-name": `ALB-${i}`,
+        debut: numDates,        // fixed up below
+        scores: new Array(numDates).fill(0),
+      }));
+      const matches = [];
+      d3.range(numDates).forEach((di) => {
+        const picked = d3.shuffle(d3.range(Math.min(numAlbums, 5 + di * 2)))
+          .slice(0, matchSize);
+        matches.push({
+          match_id: `mock-${di}`,
+          date: di,
+          ranking: picked.map((i) => `album-${i}`),
+        });
+        picked.forEach((i) => {
+          albums[i].debut = Math.min(albums[i].debut, di);
+        });
+      });
+      albums.forEach((a) => {
+        let s = 0;
+        for (let i = a.debut; i < numDates; i++) {
+          s += (Math.random() - 0.5) * 0.3;
+          a.scores[i] = Math.round(s * 10000) / 10000;
+        }
+      });
+      matches.forEach((m) => {
+        m.ranking.forEach((id) => {
+          const i = Number(id.slice("album-".length));
+          (albums[i].match_ids ||= []).push(m.match_id);
+        });
+      });
+      // Match the real API contract: albums sorted by (debut, id).
+      const rendered = albums
+        .filter((a) => a.debut < numDates)
+        .sort((a, b) => a.debut - b.debut || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+
+      // Mirror the pipeline's pre-season date: prepend one all-zero frame
+      // before the first match, shifting every date index by 1.
+      const preDate = new Date(dates[0]);
+      preDate.setDate(preDate.getDate() - 1);
+      const outDates = [preDate.toISOString().slice(0, 10), ...dates];
+      matches.forEach((m) => { m.date += 1; });
+      rendered.forEach((a) => { a.debut += 1; a.scores = [0, ...a.scores]; });
+      return { dates: outDates, albums: rendered, matches };
+    }
+
+    // ── Setup ────────────────────────────────────────────────────────────
+    function init(data) {
+      dates = data.dates;
+
+      nodes = data.albums.map((a) => ({
+        id: a.id,
+        artist: a.artist,
+        album: a.album,
+        shortName: a["short-name"] || a.album,
+        debut: a.debut,
+        scores: a.scores,
+        currentScore: a.scores[0],
+        matchIds: new Set(a.match_ids || []),
+      }));
+
+      nodesById = new Map(nodes.map((n) => [n.id, n]));
+      matchesById = new Map(data.matches.map((m) => [m.match_id, m]));
+
+      edges = [];
+      for (const m of data.matches) {
+        for (let i = 0; i < m.ranking.length - 1; i++) {
+          edges.push({
+            source: m.ranking[i],
+            target: m.ranking[i + 1],
+            date: m.date,
+            matchId: m.match_id,
+          });
+        }
+      }
+      edges.sort((a, b) => a.date - b.date);
+      edges.forEach((e, i) => { e.idx = i; });
+
+      const scored = [];
+      for (const n of nodes) {
+        for (let i = n.debut; i < n.scores.length; i++) scored.push(n.scores[i]);
+      }
+      const [minS, maxS] = d3.extent(scored);
+      yScale = d3.scaleLinear()
+        .domain([Math.min(minS, 0) - 0.1, Math.max(maxS, 0) + 0.1])
+        .range([HEIGHT - MARGIN.bottom, MARGIN.top]);
+
+      // nodes already arrive in the API's (debut, id) order, so spacing by
+      // ordinal index runs left→right by debut and gives same-debut albums
+      // distinct adjacent slots (no clumping).
+      const xMin = MARGIN.left, xMax = WIDTH - MARGIN.right;
+      nodes.forEach((n, i) => {
+        n.x = nodes.length > 1 ? xMin + (i / (nodes.length - 1)) * (xMax - xMin) : (xMin + xMax) / 2;
+        n.homeX = n.x;
+        n.y = yScale(n.scores[0]);
+        n.fy = n.y;
+      });
+
+      drawFrame();
+      buildSimulation();
+
+      scrubber.max = dates.length - 1;
+      scrubber.addEventListener("input", () => {
+        pause();
+        setTime(parseFloat(scrubber.value));
+      });
+      playBtn.addEventListener("click", () => (playing ? pause() : play()));
+
+      document.getElementById("loading").style.display = "none";
+      document.getElementById("viz-panel").style.display = "block";
+      document.getElementById("controls").style.display = "flex";
+
+      setTime(0);
+    }
+
+    function drawFrame() {
+      const grid = svg.append("g");
+      const ticks = yScale.ticks(8);
+      grid.selectAll("line").data(ticks).join("line")
+        .attr("x1", MARGIN.left).attr("x2", WIDTH - MARGIN.right)
+        .attr("y1", (d) => yScale(d)).attr("y2", (d) => yScale(d))
+        .attr("stroke", "var(--line)")
+        .attr("stroke-width", (d) => (d === 0 ? 2 : 1));
+      grid.selectAll("text").data(ticks).join("text")
+        .attr("class", "axis-label")
+        .attr("x", MARGIN.left - 10).attr("y", (d) => yScale(d))
+        .attr("text-anchor", "end").attr("dominant-baseline", "middle")
+        .text((d) => d.toFixed(1));
+      svg.append("text")
+        .attr("class", "axis-label")
+        .attr("transform", `translate(14, ${HEIGHT / 2}) rotate(-90)`)
+        .attr("text-anchor", "middle")
+        .text("SCORE");
+
+      svg.append("g").attr("id", "edges");
+      svg.append("g").attr("id", "edge-hits");
+      svg.append("g").attr("id", "nodes");
+    }
+
+    function buildSimulation() {
+      linkForce = d3.forceLink([]).id((d) => d.id)
+        .distance(LINK_DISTANCE).strength(LINK_STRENGTH);
+      sim = d3.forceSimulation(nodes)
+        .force("link", linkForce)
+        .force("charge", d3.forceManyBody().strength(CHARGE_STRENGTH))
+        .force("collide", d3.forceCollide(NODE_RADIUS + COLLIDE_PADDING))
+        .force("x", d3.forceX((d) => d.homeX).strength(X_HOME_STRENGTH))
+        .on("tick", render);
+
+      nodeSel = svg.select("#nodes").selectAll("circle").data(nodes).join("circle")
+        .attr("r", NODE_RADIUS)
+        .attr("fill", "var(--cyan)")
+        .attr("stroke", "var(--ink)")
+        .attr("stroke-width", 2)
+        .on("mouseover", showTooltip)
+        .on("mousemove", moveTooltip)
+        .on("mouseout", hideTooltip);
+    }
+
+    // ── Time control ─────────────────────────────────────────────────────
+    // Idempotent: recomputes the whole state for any t, so scrubbing
+    // backwards works the same as playing forwards.
+    function setTime(t) {
+      time = Math.max(0, Math.min(dates.length - 1, t));
+
+      const i0 = Math.floor(time);
+      const i1 = Math.min(i0 + 1, dates.length - 1);
+      const frac = time - i0;
+      for (const n of nodes) {
+        n.currentScore = n.scores[i0] + (n.scores[i1] - n.scores[i0]) * frac;
+        n.fy = yScale(n.currentScore);
+      }
+
+      // Active window over the date-sorted edge list. Edges become active
+      // EDGE_LEAD_DATES before their score transition completes, so a
+      // match's connecting lines appear before its nodes finish moving.
+      let end = edgeEnd;
+      while (end < edges.length && edges[end].date - EDGE_LEAD_DATES < time) end++;
+      while (end > 0 && edges[end - 1].date - EDGE_LEAD_DATES >= time) end--;
+      let start = Math.min(edgeStart, end);
+      while (start < end && time - (edges[start].date - EDGE_LEAD_DATES) >= EDGE_TTL_DATES) start++;
+      while (start > 0 && time - (edges[start - 1].date - EDGE_LEAD_DATES) < EDGE_TTL_DATES) start--;
+
+      if (start !== edgeStart || end !== edgeEnd) {
+        edgeStart = start;
+        edgeEnd = end;
+        const active = edges.slice(start, end);
+        linkForce.links(active);
+        edgeSel = svg.select("#edges").selectAll("line")
+          .data(active, (d) => d.idx)
+          .join("line")
+          .attr("stroke-linecap", "round");
+        edgeHitSel = svg.select("#edge-hits").selectAll("line")
+          .data(active, (d) => d.idx)
+          .join("line")
+          .attr("stroke", "transparent")
+          .attr("stroke-width", 10)
+          .style("cursor", "pointer")
+          .on("mouseover", showEdgeTooltip)
+          .on("mousemove", moveTooltip)
+          .on("mouseout", hideEdgeTooltip);
+        sim.alpha(Math.max(sim.alpha(), 0.6)).restart();
+      } else {
+        sim.alpha(Math.max(sim.alpha(), 0.2)).restart();
+      }
+
+      nodeSel.attr("opacity", (d) => (time < d.debut ? 0.3 : 1));
+
+      scrubber.value = time;
+      dateLabel.textContent = dates[Math.round(time)];
+    }
+
+    function render() {
+      const xMin = MARGIN.left + NODE_RADIUS;
+      const xMax = WIDTH - MARGIN.right - NODE_RADIUS;
+      for (const n of nodes) {
+        n.x = Math.max(xMin, Math.min(xMax, n.x));
+      }
+      if (edgeSel) {
+        edgeSel
+          .attr("x1", (d) => d.source.x).attr("y1", (d) => d.source.y)
+          .attr("x2", (d) => d.target.x).attr("y2", (d) => d.target.y)
+          .attr("stroke", edgeStroke)
+          .attr("stroke-width", edgeWidth)
+          .attr("stroke-opacity", edgeOpacity);
+      }
+      if (edgeHitSel) {
+        edgeHitSel
+          .attr("x1", (d) => d.source.x).attr("y1", (d) => d.source.y)
+          .attr("x2", (d) => d.target.x).attr("y2", (d) => d.target.y);
+      }
+      nodeSel.attr("cx", (d) => d.x).attr("cy", (d) => d.y);
+    }
+
+    function edgeStroke(d) {
+      if (d.matchId === hoveredMatchId) return "var(--pink)";
+      if (hoveredNodeMatchIds && hoveredNodeMatchIds.has(d.matchId)) return "var(--violet)";
+      return time - d.date < 1 ? "var(--pink)" : "var(--ink-soft)";
+    }
+    function edgeWidth(d) {
+      if (d.matchId === hoveredMatchId) return 3;
+      if (hoveredNodeMatchIds && hoveredNodeMatchIds.has(d.matchId)) return 2;
+      return time - d.date < 1 ? 2 : 1;
+    }
+    function edgeOpacity(d) {
+      if (d.matchId === hoveredMatchId) return 1;
+      if (hoveredNodeMatchIds && hoveredNodeMatchIds.has(d.matchId)) return 0.55;
+      return time - d.date < 1 ? 0.8 : 0.18;
+    }
+
+    // ── Playback ─────────────────────────────────────────────────────────
+    function play() {
+      if (time >= dates.length - 1) setTime(0);
+      playing = true;
+      lastFrame = null;
+      playBtn.innerHTML = "&#10074;&#10074; PAUSE";
+      sim.alphaTarget(0.3).restart();
+      requestAnimationFrame(frame);
+    }
+
+    function pause() {
+      playing = false;
+      playBtn.innerHTML = "&#9654; PLAY";
+      if (sim) sim.alphaTarget(0);
+    }
+
+    function frame(now) {
+      if (!playing) return;
+      if (lastFrame !== null) {
+        setTime(time + ((now - lastFrame) / 1000) * PLAYBACK_SPEED);
+      }
+      lastFrame = now;
+      if (time >= dates.length - 1) {
+        pause();
+        return;
+      }
+      requestAnimationFrame(frame);
+    }
+
+    // ── Tooltip ──────────────────────────────────────────────────────────
+    function showTooltip(event, d) {
+      tooltip.innerHTML =
+        `<div class="tt-name">${esc(d.album)}</div>` +
+        `<div class="tt-artist">${esc(d.artist)}</div>` +
+        `<div class="tt-score">${time < d.debut ? "unrated" : d.currentScore.toFixed(3)}</div>`;
+      tooltip.style.display = "block";
+      moveTooltip(event);
+      d3.select(event.currentTarget).attr("fill", "var(--pink)");
+      hoveredNodeMatchIds = d.matchIds;
+      updateEdgeHighlight();
+    }
+
+    function moveTooltip(event) {
+      tooltip.style.left = `${event.clientX + 14}px`;
+      tooltip.style.top = `${event.clientY + 14}px`;
+    }
+
+    function hideTooltip(event) {
+      tooltip.style.display = "none";
+      d3.select(event.currentTarget).attr("fill", "var(--cyan)");
+      hoveredNodeMatchIds = null;
+      updateEdgeHighlight();
+    }
+
+    function showEdgeTooltip(event, d) {
+      hoveredMatchId = d.matchId;
+      updateEdgeHighlight();
+
+      const match = matchesById.get(d.matchId);
+      const rows = match.ranking
+        .map((id, i) => {
+          const n = nodesById.get(id);
+          return `<div class="tt-rank"><span class="tt-rank-num">${i + 1}.</span>${esc(n ? n.shortName : id)}</div>`;
+        })
+        .join("");
+      tooltip.innerHTML = `<div class="tt-name">${esc(dates[match.date] ?? match.date)}</div>${rows}`;
+      tooltip.style.display = "block";
+      moveTooltip(event);
+    }
+
+    function hideEdgeTooltip() {
+      hoveredMatchId = null;
+      updateEdgeHighlight();
+      tooltip.style.display = "none";
+    }
+
+    function updateEdgeHighlight() {
+      if (!edgeSel) return;
+      edgeSel
+        .attr("stroke", edgeStroke)
+        .attr("stroke-width", edgeWidth)
+        .attr("stroke-opacity", edgeOpacity);
+    }
+
+    load();
+  </script>
+</body>
+</html>
