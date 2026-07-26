@@ -9,6 +9,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="alternate" type="application/atom+xml" title="Tournament of Albums — Match Results" href="https://toa-api.tor-gu.com/feed">
   <link rel="stylesheet" href="theme.css">
+  <!-- Blocking on purpose: the inline page script below reads window.TOA_CONFIG. -->
+  <script src="config.js"></script>
   <script src="theme.js" defer></script>
   <style>
     /* Tokens, reset, body base, focus, festive header, nav pill, and
@@ -336,7 +338,14 @@
       if (rank == null) return "var(--ink-soft)";
       return RANK_COLORS[Math.floor(rank - 1) % RANK_COLORS.length];
     }
-    const API_BASE_URL = "https://toa-api.tor-gu.com";
+    // Set by config.js, which Terraform generates per environment. The ?api=
+    // override is allowlisted so a crafted link can't point the page at an
+    // arbitrary host and render someone else's data under this domain.
+    const API_BASE_URL = (() => {
+      const override = new URLSearchParams(location.search).get("api");
+      if (override && /^(https:\/\/[\w-]+\.tor-gu\.com|http:\/\/localhost:\d+)$/.test(override)) return override;
+      return window.TOA_CONFIG?.apiBaseUrl ?? "https://toa-api.tor-gu.com";
+    })();
     const BASE_TITLE = "Tournament of Albums — Official Standings";
     const COLORS = [
       { border: "#FF3D7F", bg: "rgba(255,61,127,0.12)" },

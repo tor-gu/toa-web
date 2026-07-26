@@ -2,7 +2,8 @@
    On load: fills any .header-deco with the doodle SVGs and animates the
    header <h1> into hopping, multi-colored characters. Included by index.html
    and viz.html; both just need a `.page-header` with an <h1> and (optionally)
-   an empty `<div class="header-deco"></div>`. */
+   an empty `<div class="header-deco"></div>`.
+   Also renders the non-prod environment banner from window.TOA_CONFIG. */
 (function () {
   "use strict";
 
@@ -35,7 +36,21 @@
       .join("");
   }
 
+  /* Flags any environment that isn't prod, so a test tab is never mistaken
+     for the real standings. Driven by config.js, which Terraform generates
+     per environment. */
+  function renderEnvBanner() {
+    const env = window.TOA_CONFIG?.environment;
+    if (!env || env === "prod") return;
+    const banner = document.createElement("div");
+    banner.className = "env-banner";
+    banner.textContent = `${env.toUpperCase()} — not the real standings`;
+    document.body.prepend(banner);
+    document.documentElement.classList.add("has-env-banner");
+  }
+
   function init() {
+    renderEnvBanner();
     renderHeaderDeco();
     animateTitle();
   }
