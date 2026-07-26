@@ -8,10 +8,12 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="alternate" type="application/atom+xml" title="Tournament of Albums — Match Results" href="https://toa-api.tor-gu.com/feed">
-  <link rel="stylesheet" href="theme.css">
+  <!-- Root-absolute, not document-relative: this document is also served from
+       /album/<id> and /match/<id>, where "theme.css" would resolve to /album/theme.css. -->
+  <link rel="stylesheet" href="/theme.css">
   <!-- Blocking on purpose: the inline page script below reads window.TOA_CONFIG. -->
-  <script src="config.js"></script>
-  <script src="theme.js" defer></script>
+  <script src="/config.js"></script>
+  <script src="/theme.js" defer></script>
   <style>
     /* Tokens, reset, body base, focus, festive header, nav pill, and
        .section-label live in the shared theme.css. Page-specific rules only. */
@@ -281,7 +283,7 @@
   </div>
 
   <div id="view-landing">
-    <nav class="page-nav"><a class="nav-link" href="viz.html">Cool Visualization &rarr;</a></nav>
+    <nav class="page-nav"><a class="nav-link" href="/viz.html">Cool Visualization &rarr;</a></nav>
     <div class="page-layout">
       <aside id="recent-matches-panel">
         <div class="section-label">Recent Matches</div>
@@ -302,7 +304,7 @@
   </div>
 
   <div id="view-album" style="display:none">
-    <a class="back-link" href="#/">← Rankings</a>
+    <a class="back-link" href="/">← Rankings</a>
     <div id="album-heading">
       <div id="album-artist"></div>
       <h2 id="album-title"></h2>
@@ -365,14 +367,51 @@
     let usedColorIndices = new Set(), pendingFetches = 0, activeChart = null;
 
     function esc(s) { return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
-    function albumHref(id) { return `#/album/${encodeURIComponent(id)}`; }
+    function albumHref(id) { return `/album/${encodeURIComponent(id)}`; }
 
-    /* ── Router ─────────────────────────────────────────────── */
+    /* ── Router ─────────────────────────────────────────────────
+       Real paths, not a #fragment: these URLs are shared, linked from the Atom
+       feed, and crawled, so they have to mean something to anything that doesn't
+       run JS. CloudFront serves index.html for them — see
+       toa-terraform/modules/toa-web/router.js, which must know the same prefixes
+       this table does. */
+
+    const ROUTES = [
+      [/^\/album\/([0-9a-f]+)\/?$/i, id => showAlbumView(id)],
+    ];
 
     function route() {
-      const m = location.hash.match(/^#\/album\/([0-9a-f]+)$/i);
-      if (m) showAlbumView(m[1]); else showLanding();
+      for (const [re, handler] of ROUTES) {
+        const m = location.pathname.match(re);
+        if (m) { handler(m[1]); return; }
+      }
+      showLanding();
     }
+
+    /* Keeps the query string: the ?api= override lives there, and dropping it on
+       the first in-app navigation would quietly send a test session back to the
+       prod API with no visible sign. */
+    function navigate(href) {
+      history.pushState({}, "", href + location.search);
+      route();
+    }
+
+    function isRoutedPath(pathname) {
+      return pathname === "/" || ROUTES.some(([re]) => re.test(pathname));
+    }
+
+    /* Bailing out on modifier keys, non-primary buttons and target/download is
+       what keeps cmd-click, middle-click and "open in new tab" behaving like
+       ordinary links. Anything not in the route table (e.g. /viz.html) is left
+       alone and does a real page load. */
+    document.addEventListener("click", e => {
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      const a = e.target.closest("a");
+      if (!a || a.target || a.hasAttribute("download") || a.origin !== location.origin) return;
+      if (!isRoutedPath(a.pathname)) return;
+      e.preventDefault();
+      navigate(a.getAttribute("href"));
+    });
 
     function showLanding() {
       document.getElementById("view-album").style.display = "none";
@@ -733,7 +772,7 @@
         document.querySelector("#content tbody").addEventListener("click", e => {
           if (e.target.closest("a")) return;
           const row = e.target.closest("tr[data-album-id]"); if (!row) return;
-          location.hash = albumHref(row.dataset.albumId);
+          navigate(albumHref(row.dataset.albumId));
         });
         document.querySelectorAll("#content th[data-col]").forEach(th => {
           th.addEventListener("click", () => {
@@ -749,7 +788,7 @@
       route();
     }
 
-    window.addEventListener("hashchange", route);
+    window.addEventListener("popstate", route);
     initCompareBox();
     load();
     loadRecentMatches();
