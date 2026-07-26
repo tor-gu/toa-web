@@ -9,8 +9,10 @@
   <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
   <link rel="stylesheet" href="/theme.css">
-  <!-- Blocking on purpose: the inline page script below reads window.TOA_CONFIG. -->
+  <!-- Blocking, and in this order: api.js reads window.TOA_CONFIG, and the inline
+       page script below reads the window.TOA_API_BASE_URL that api.js sets. -->
   <script src="/config.js"></script>
+  <script src="/api.js"></script>
   <script src="/theme.js" defer></script>
   <style>
     /* Tokens, reset, body base, focus, festive header, and nav pill live in
@@ -121,14 +123,7 @@
   <script>
     "use strict";
 
-    // Set by config.js, which Terraform generates per environment. The ?api=
-    // override is allowlisted so a crafted link can't point the page at an
-    // arbitrary host and render someone else's data under this domain.
-    const API_BASE_URL = (() => {
-      const override = new URLSearchParams(location.search).get("api");
-      if (override && /^(https:\/\/[\w-]+\.tor-gu\.com|http:\/\/localhost:\d+)$/.test(override)) return override;
-      return window.TOA_CONFIG?.apiBaseUrl ?? "https://toa-api.tor-gu.com";
-    })();
+    const API_BASE_URL = window.TOA_API_BASE_URL;
 
     // ── Tunables ─────────────────────────────────────────────────────────
     const PLAYBACK_SPEED = 2;         // date indices per second
