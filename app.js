@@ -14,7 +14,7 @@ function rankColor(rank) {
   return RANK_COLORS[Math.floor(rank - 1) % RANK_COLORS.length];
 }
 const API_BASE_URL = window.TOA_API_BASE_URL;
-const BASE_TITLE = "Tournament of Albums — Official Standings";
+const BASE_TITLE = "Tournament of Albums";
 const COLORS = [
   { border: "#FF3D7F", bg: "rgba(255,61,127,0.12)" },
   { border: "#1EC8E0", bg: "rgba(30,200,224,0.12)" },
