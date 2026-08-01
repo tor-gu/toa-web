@@ -264,9 +264,61 @@
     .ranking-delta.down { color: var(--pink); }
     .ranking-delta.flat { color: var(--ink-soft); }
 
+    /* ── Match permalink (both accordions) ──────────────────── */
+    .match-head { display: flex; align-items: center; }
+    .match-head .match-toggle { width: auto; flex: 1 1 auto; min-width: 0; }
+    .match-permalink {
+      flex-shrink: 0;
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 1.9rem; align-self: stretch;
+      color: var(--ink-soft); text-decoration: none;
+      font-size: 0.85rem; line-height: 1;
+    }
+    .match-permalink:hover { color: var(--violet); background: rgba(124, 58, 237, 0.1); }
+
+    /* ── Match view ─────────────────────────────────────────── */
+    #match-heading { margin: 0 0 1rem; }
+    #match-kicker {
+      font-size: 0.78rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.12em;
+      color: var(--ink-soft);
+    }
+    #match-title {
+      font-family: 'Bungee', sans-serif;
+      font-size: clamp(1.2rem, 4vw, 1.9rem);
+      margin: 0.1rem 0 0;
+      line-height: 1.15;
+      color: var(--ink);
+    }
+    #match-subtitle { font-size: 0.8rem; font-weight: 500; color: var(--ink-soft); }
+    #match-panel {
+      background: var(--surface);
+      border: 2px solid var(--ink);
+      border-radius: 12px;
+      padding: 1rem 1.25rem 1.25rem;
+      box-shadow: 4px 4px 0 var(--violet);
+    }
+    #match-view-status { color: var(--ink-soft); font-size: 0.85rem; margin: 0; font-weight: 500; }
+    #match-view-status.error { color: var(--pink); }
+    #match-table-wrap:not(:empty) {
+      border: 2px solid var(--ink); border-radius: 10px;
+      overflow: hidden; overflow-x: auto;
+    }
+    #match-table-wrap td.match-now {
+      font-variant-numeric: tabular-nums;
+      color: var(--ink-soft);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    #match-table-wrap .ranking-delta { display: inline-block; }
+
     @media (max-width: 600px) {
       #history-panes { flex-direction: column; }
       #score-pane, #match-pane { flex: none; width: 100%; }
+      /* Claw back width so Change/Now stay near the fold — the wrap still
+         scrolls, but the interesting columns shouldn't need discovering. */
+      #match-panel { padding: 0.8rem 0.7rem 0.9rem; }
+      #match-table-wrap th, #match-table-wrap td { padding-left: 0.5rem; padding-right: 0.5rem; }
     }
     @media (max-width: 880px) {
       .page-layout { flex-direction: column; }
@@ -329,6 +381,19 @@
           <div id="match-list"></div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <div id="view-match" style="display:none">
+    <a class="back-link" href="/">← Rankings</a>
+    <div id="match-heading">
+      <div id="match-kicker">Match Results</div>
+      <h2 id="match-title"></h2>
+      <div id="match-subtitle"></div>
+    </div>
+    <div id="match-panel">
+      <p id="match-view-status"></p>
+      <div id="match-table-wrap"></div>
     </div>
   </div>
 

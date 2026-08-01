@@ -24,7 +24,9 @@ const COLORS = [
   { border: "#F2552C", bg: "rgba(242,85,44,0.12)" },
 ];
 
-// Cached across navigations
+// Cached across navigations. matchResultCache holds whole /results/{id} bodies
+// ({match_id, date, ranking}) — the accordions want the ranking, the match view
+// also wants the date, and both share the fetch.
 let allScores = [], scoresById = {}, albumDataCache = {}, albumNames = {}, matchResultCache = {};
 // Landing view state
 let currentFilter = "", currentSort = { col: null, dir: "asc" };
@@ -34,6 +36,7 @@ let usedColorIndices = new Set(), pendingFetches = 0, activeChart = null;
 
 function esc(s) { return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
 function albumHref(id) { return `/album/${encodeURIComponent(id)}`; }
+function matchHref(id) { return `/match/${encodeURIComponent(id)}`; }
 
 /* ── Router ─────────────────────────────────────────────────
    Real paths, not a #fragment: these URLs are shared, linked from the Atom
@@ -44,6 +47,7 @@ function albumHref(id) { return `/album/${encodeURIComponent(id)}`; }
 
 const ROUTES = [
   [/^\/album\/([0-9a-f]+)\/?$/i, id => showAlbumView(id)],
+  [/^\/match\/([0-9a-f]+)\/?$/i, id => showMatchView(id)],
 ];
 
 function route() {
@@ -79,15 +83,22 @@ document.addEventListener("click", e => {
   navigate(a.getAttribute("href"));
 });
 
+/* Every view is a pre-existing sibling div toggled by display. Hiding all of
+   them by name here, rather than each show* function hiding the others, is what
+   keeps a fourth view from silently leaving a third one on screen. */
+const VIEW_IDS = ["view-landing", "view-album", "view-match"];
+
+function showView(id) {
+  for (const v of VIEW_IDS) document.getElementById(v).style.display = v === id ? "block" : "none";
+}
+
 function showLanding() {
-  document.getElementById("view-album").style.display = "none";
-  document.getElementById("view-landing").style.display = "block";
+  showView("view-landing");
   document.title = BASE_TITLE;
 }
 
 function showAlbumView(albumId) {
-  document.getElementById("view-landing").style.display = "none";
-  document.getElementById("view-album").style.display = "block";
+  showView("view-album");
   const artistEl = document.getElementById("album-artist");
   const titleEl = document.getElementById("album-title");
   const meta = scoresById[albumId];
@@ -317,6 +328,21 @@ function initCompareBox() {
 
 /* ── Match history ──────────────────────────────────────── */
 
+/* Shared by both accordions. The permalink is a sibling of the toggle, not a
+   child: an <a> inside a <button> is invalid, and the toggle would swallow the
+   click. No listener needed — the delegated handler routes /match/ paths once
+   they are in ROUTES. */
+function matchRowHtml(matchId, date) {
+  return `
+    <div class="match-row" data-match-id="${esc(matchId)}">
+      <div class="match-head">
+        <button class="match-toggle"><span>${esc(date)}</span><span class="match-arrow">&#9658;</span></button>
+        <a class="match-permalink" href="${matchHref(matchId)}" aria-label="Open match page for ${esc(date)}">&#8599;</a>
+      </div>
+      <div class="match-detail"></div>
+    </div>`;
+}
+
 function renderMatchPane() {
   const listEl = document.getElementById("match-list");
   const statusEl = document.getElementById("match-status");
@@ -325,11 +351,7 @@ function renderMatchPane() {
   statusEl.textContent = ""; statusEl.className = "";
   if (!matchList || matchList.length === 0) { listEl.innerHTML = ""; statusEl.textContent = "No matches on record."; return; }
   const sorted = [...matchList].reverse();
-  listEl.innerHTML = sorted.map(({ match_id, date }) => `
-    <div class="match-row" data-match-id="${esc(match_id)}">
-      <button class="match-toggle"><span>${esc(date)}</span><span class="match-arrow">&#9658;</span></button>
-      <div class="match-detail"></div>
-    </div>`).join("");
+  listEl.innerHTML = sorted.map(({ match_id, date }) => matchRowHtml(match_id, date)).join("");
   listEl.querySelectorAll(".match-row").forEach(row => {
     const matchId = row.dataset.matchId; const btn = row.querySelector(".match-toggle"); const det = row.querySelector(".match-detail");
     btn.addEventListener("click", () => toggleMatchRow(matchId, btn, det, { compare: true }));
@@ -347,7 +369,7 @@ async function toggleMatchRow(matchId, btn, det, opts = {}) {
   try {
     const res = await fetch(`${API_BASE_URL}/results/${encodeURIComponent(matchId)}`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    matchResultCache[matchId] = (await res.json()).ranking; renderMatchDetail(matchId, det, opts);
+    matchResultCache[matchId] = await res.json(); renderMatchDetail(matchId, det, opts);
   } catch (e) { det.textContent = `Error: ${e.message}`; }
 }
 
@@ -366,7 +388,7 @@ function deltaClass(item) {
 }
 
 function renderMatchDetail(matchId, det, opts = {}) {
-  det.innerHTML = (matchResultCache[matchId] || []).map(item => `
+  det.innerHTML = (matchResultCache[matchId]?.ranking || []).map(item => `
     <div class="ranking-item${opts.compare && item.id === focalAlbumId ? " focal" : ""}">
       <span class="ranking-num">${item.rank}.</span>
       <a class="ranking-album-link" href="${albumHref(item.id)}">${esc(item.artist)} — ${esc(item.album)}</a>
@@ -381,15 +403,81 @@ function renderMatchDetail(matchId, det, opts = {}) {
   });
 }
 
+/* ── Match view ─────────────────────────────────────────── */
+
+/* The whole page hangs off one fetch, so a fast back/forward could otherwise
+   let a slow response repaint a match the user has already navigated away
+   from. Every DOM write below is gated on this still matching. */
+let currentMatchId = null;
+
+async function showMatchView(matchId) {
+  showView("view-match");
+  window.scrollTo(0, 0);
+  currentMatchId = matchId;
+  if (matchResultCache[matchId]) { renderMatchView(matchResultCache[matchId]); return; }
+
+  const statusEl = document.getElementById("match-view-status");
+  document.getElementById("match-title").textContent = "";
+  document.getElementById("match-subtitle").textContent = "";
+  document.title = `Match Results · ${BASE_TITLE}`;
+  document.getElementById("match-table-wrap").innerHTML = "";
+  statusEl.textContent = "Loading…"; statusEl.className = "";
+  try {
+    const res = await fetch(`${API_BASE_URL}/results/${encodeURIComponent(matchId)}`);
+    if (currentMatchId !== matchId) return;
+    if (res.status === 404) {
+      document.getElementById("match-title").textContent = "Match not found";
+      document.title = `Match not found · ${BASE_TITLE}`;
+      statusEl.textContent = "No match with this id is on record.";
+      statusEl.className = "error";
+      return;
+    }
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if (currentMatchId !== matchId) return;
+    matchResultCache[matchId] = data;
+    renderMatchView(data);
+  } catch (e) {
+    if (currentMatchId !== matchId) return;
+    statusEl.textContent = `Error: ${e.message}`; statusEl.className = "error";
+  }
+}
+
+/* The "Now" column reads scoresById, which load() fills before it calls
+   route(), so it is populated by the time any view renders. It falls back to
+   an en dash for an album missing from /scores — which also covers the case
+   where that fetch failed outright and left scoresById empty. */
+function renderMatchView({ date, ranking }) {
+  document.getElementById("match-title").textContent = date;
+  document.getElementById("match-subtitle").textContent =
+    `${ranking.length} album${ranking.length === 1 ? "" : "s"}`;
+  document.title = `Match ${date} · ${BASE_TITLE}`;
+  document.getElementById("match-view-status").textContent = "";
+  document.getElementById("match-view-status").className = "";
+  document.getElementById("match-table-wrap").innerHTML = `
+    <table>
+      <thead><tr>
+        <th>Rank</th><th>Artist</th><th>Album</th><th>Change</th><th>Now</th>
+      </tr></thead>
+      <tbody>${ranking.map(item => {
+        const now = scoresById[item.id];
+        return `
+        <tr>
+          <td class="rank"><span style="background:${rankColor(item.rank)}">${item.rank}</span></td>
+          <td>${esc(item.artist)}</td>
+          <td><a class="album-link" href="${albumHref(item.id)}">${esc(item.album)}</a></td>
+          <td><span class="ranking-delta ${deltaClass(item)}">${formatDelta(item)}</span></td>
+          <td class="match-now">${now ? `#${formatRank(now.rank)}` : "–"}</td>
+        </tr>`;
+      }).join("")}</tbody>
+    </table>`;
+}
+
 /* ── Landing: recent matches ────────────────────────────── */
 
 function renderRecentMatches(matches) {
   const listEl = document.getElementById("recent-matches-list");
-  listEl.innerHTML = matches.map(({ match_id, date }) => `
-    <div class="match-row" data-match-id="${esc(match_id)}">
-      <button class="match-toggle"><span>${esc(date)}</span><span class="match-arrow">&#9658;</span></button>
-      <div class="match-detail"></div>
-    </div>`).join("");
+  listEl.innerHTML = matches.map(({ match_id, date }) => matchRowHtml(match_id, date)).join("");
   listEl.querySelectorAll(".match-row").forEach(row => {
     const matchId = row.dataset.matchId; const btn = row.querySelector(".match-toggle"); const det = row.querySelector(".match-detail");
     btn.addEventListener("click", () => toggleMatchRow(matchId, btn, det, { showDelta: true }));
