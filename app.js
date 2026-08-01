@@ -9,6 +9,9 @@ function formatRank(rank) {
   if (rank == null) return "–";
   return Number.isInteger(rank) ? String(rank) : rank.toFixed(1);
 }
+function formatScore(score) {
+  return score == null ? "–" : score.toFixed(3);
+}
 function rankColor(rank) {
   if (rank == null) return "var(--ink-soft)";
   return RANK_COLORS[Math.floor(rank - 1) % RANK_COLORS.length];
@@ -443,10 +446,6 @@ async function showMatchView(matchId) {
   }
 }
 
-/* The "Now" column reads scoresById, which load() fills before it calls
-   route(), so it is populated by the time any view renders. It falls back to
-   an en dash for an album missing from /scores — which also covers the case
-   where that fetch failed outright and left scoresById empty. */
 function renderMatchView({ date, ranking }) {
   document.getElementById("match-title").textContent = date;
   document.getElementById("match-subtitle").textContent =
@@ -457,19 +456,16 @@ function renderMatchView({ date, ranking }) {
   document.getElementById("match-table-wrap").innerHTML = `
     <table>
       <thead><tr>
-        <th>Rank</th><th>Artist</th><th>Album</th><th>Change</th><th>Now</th>
+        <th>Rank</th><th>Artist</th><th>Album</th><th>Score</th><th>Change</th>
       </tr></thead>
-      <tbody>${ranking.map(item => {
-        const now = scoresById[item.id];
-        return `
+      <tbody>${ranking.map(item => `
         <tr>
           <td class="rank"><span style="background:${rankColor(item.rank)}">${item.rank}</span></td>
           <td>${esc(item.artist)}</td>
           <td><a class="album-link" href="${albumHref(item.id)}">${esc(item.album)}</a></td>
+          <td class="score">${formatScore(item.new_score)}</td>
           <td><span class="ranking-delta ${deltaClass(item)}">${formatDelta(item)}</span></td>
-          <td class="match-now">${now ? `#${formatRank(now.rank)}` : "–"}</td>
-        </tr>`;
-      }).join("")}</tbody>
+        </tr>`).join("")}</tbody>
     </table>`;
 }
 

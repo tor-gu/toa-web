@@ -304,18 +304,12 @@
       border: 2px solid var(--ink); border-radius: 10px;
       overflow: hidden; overflow-x: auto;
     }
-    #match-table-wrap td.match-now {
-      font-variant-numeric: tabular-nums;
-      color: var(--ink-soft);
-      font-weight: 600;
-      white-space: nowrap;
-    }
     #match-table-wrap .ranking-delta { display: inline-block; }
 
     @media (max-width: 600px) {
       #history-panes { flex-direction: column; }
       #score-pane, #match-pane { flex: none; width: 100%; }
-      /* Claw back width so Change/Now stay near the fold — the wrap still
+      /* Claw back width so Score/Change stay near the fold — the wrap still
          scrolls, but the interesting columns shouldn't need discovering. */
       #match-panel { padding: 0.8rem 0.7rem 0.9rem; }
       #match-table-wrap th, #match-table-wrap td { padding-left: 0.5rem; padding-right: 0.5rem; }
