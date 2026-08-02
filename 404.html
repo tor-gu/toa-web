@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <title>Page not found &middot; Tournament of Albums</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  <!-- Root-absolute, not document-relative: CloudFront serves this document for any
+       unmatched path, including deep ones like /a/b/c, where "theme.css" would
+       resolve to /a/b/theme.css. -->
+  <link rel="stylesheet" href="/theme.css">
+  <!-- config.js only, no api.js: this page makes no API calls. theme.js reads
+       window.TOA_CONFIG for the non-prod banner, so config.js must load first. -->
+  <script src="/config.js"></script>
+  <script src="/theme.js" defer></script>
+  <style>
+    /* Tokens, reset, body base, festive header and the nav pill live in the
+       shared theme.css. Page-specific rules only. */
+    .notfound { text-align: center; padding: 2rem 1rem 0; }
+
+    .code-404 {
+      font-family: 'Bungee', sans-serif;
+      font-size: clamp(4rem, 22vw, 9rem);
+      line-height: 1;
+      margin: 0;
+      color: var(--pink);
+      text-shadow: 6px 6px 0 var(--ink);
+    }
+
+    .notfound-msg {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--ink-soft);
+      margin: 1.25rem 0 1.75rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="page-header">
+    <div class="header-deco"></div>
+    <h1>Tournament of Albums</h1>
+  </div>
+
+  <main class="notfound">
+    <p class="code-404">404</p>
+    <p class="notfound-msg">Page not found.</p>
+    <nav class="page-nav"><a class="nav-link" href="/">&larr; Back to Rankings</a></nav>
+  </main>
+</body>
+</html>
