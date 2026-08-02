@@ -75,9 +75,16 @@ h1 {
 }
 @media (prefers-reduced-motion: reduce) { .title-ch { animation: none; } }
 
-/* ── Pill nav link ───────────────────────────────────────────── */
-.page-nav { margin: 0 0 1rem; }
-.nav-link {
+/* ── Navigation tabs ─────────────────────────────────────────── */
+/* Injected by theme.js immediately after .page-header on every page. */
+.tab-nav {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  margin: 0 0 1.5rem;
+}
+.tab-link {
   display: inline-block;
   font-family: 'Poppins', sans-serif;
   font-size: 0.78rem; font-weight: 700;
@@ -88,7 +95,13 @@ h1 {
   padding: 0.3rem 0.85rem;
   box-shadow: 3px 3px 0 var(--cyan);
 }
-.nav-link:hover { color: var(--violet); box-shadow: 3px 3px 0 var(--pink); }
+.tab-link:hover { color: var(--violet); box-shadow: 3px 3px 0 var(--pink); }
+/* The current section reads as "pressed in" against the white pills. No hover
+   rule — you are already there. */
+.tab-link[aria-current="page"] {
+  background: var(--yellow);
+  box-shadow: 3px 3px 0 var(--violet);
+}
 
 /* ── Section label ───────────────────────────────────────────── */
 .section-label {

@@ -17,7 +17,7 @@
   <script src="/api.js"></script>
   <script src="/theme.js" defer></script>
   <style>
-    /* Tokens, reset, body base, focus, festive header, nav pill, and
+    /* Tokens, reset, body base, focus, festive header, navigation tabs, and
        .section-label live in the shared theme.css. Page-specific rules only. */
     body { padding-bottom: 4rem; }
     .page-layout { display: flex; gap: 1.75rem; align-items: flex-start; }
@@ -126,19 +126,6 @@
     th.sort-active .sort-indicator { color: var(--pink); }
 
     /* ── Album view ─────────────────────────────────────────── */
-    .back-link {
-      display: inline-block;
-      font-family: 'Poppins', sans-serif;
-      font-size: 0.78rem; font-weight: 700;
-      text-transform: uppercase; letter-spacing: 0.08em;
-      color: var(--ink); text-decoration: none;
-      background: var(--surface);
-      border: 2px solid var(--ink); border-radius: 20px;
-      padding: 0.3rem 0.85rem;
-      box-shadow: 3px 3px 0 var(--cyan);
-      margin-bottom: 1rem;
-    }
-    .back-link:hover { color: var(--violet); box-shadow: 3px 3px 0 var(--pink); }
     #album-heading { margin: 0 0 1rem; }
     #album-artist {
       font-size: 0.78rem; font-weight: 700;
@@ -306,6 +293,19 @@
     }
     #match-table-wrap .ranking-delta { display: inline-block; }
 
+    /* ── About view ─────────────────────────────────────────── */
+    #about-panel {
+      background: var(--surface);
+      border: 2px solid var(--ink);
+      border-radius: 12px;
+      padding: 1.2rem 1.4rem;
+      box-shadow: 4px 4px 0 var(--pink);
+      max-width: 46rem;
+    }
+    #about-panel p { margin: 0 0 0.9rem; font-size: 0.95rem; line-height: 1.6; }
+    #about-panel p:last-child { margin-bottom: 0; }
+    .about-placeholder { color: var(--ink-soft); font-style: italic; }
+
     @media (max-width: 600px) {
       #history-panes { flex-direction: column; }
       #score-pane, #match-pane { flex: none; width: 100%; }
@@ -331,7 +331,6 @@
   </div>
 
   <div id="view-landing">
-    <nav class="page-nav"><a class="nav-link" href="/viz.html">Cool Visualization &rarr;</a></nav>
     <div class="page-layout">
       <aside id="recent-matches-panel">
         <div class="section-label">Recent Matches</div>
@@ -352,7 +351,6 @@
   </div>
 
   <div id="view-album" style="display:none">
-    <a class="back-link" href="/">← Rankings</a>
     <div id="album-heading">
       <div id="album-artist"></div>
       <h2 id="album-title"></h2>
@@ -379,7 +377,6 @@
   </div>
 
   <div id="view-match" style="display:none">
-    <a class="back-link" href="/">← Rankings</a>
     <div id="match-heading">
       <div id="match-kicker">Match Results</div>
       <h2 id="match-title"></h2>
@@ -388,6 +385,18 @@
     <div id="match-panel">
       <p id="match-view-status"></p>
       <div id="match-table-wrap"></div>
+    </div>
+  </div>
+
+  <div id="view-about" style="display:none">
+    <div class="section-label">About</div>
+    <div id="about-panel">
+      <p>
+        This is the Tournament of Albums.
+      </p>
+      <p class="about-placeholder">
+        Eventually, I will place an explanation here. But I have yet done so.
+      </p>
     </div>
   </div>
 

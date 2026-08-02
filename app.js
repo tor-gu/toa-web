@@ -51,9 +51,18 @@ function matchHref(id) { return `/match/${encodeURIComponent(id)}`; }
 const ROUTES = [
   [/^\/album\/([0-9a-f]+)\/?$/i, id => showAlbumView(id)],
   [/^\/match\/([0-9a-f]+)\/?$/i, id => showMatchView(id)],
+  [/^\/about\/?$/i, () => showAboutView()],
 ];
 
 function route() {
+  dispatch();
+  /* The nav tabs are rendered by theme.js, which has no way to observe a
+     pushState. Optional call because theme.js is deferred and this classic
+     script runs first on a cold load — theme.js sets the initial state itself. */
+  window.TOA_updateActiveTab?.();
+}
+
+function dispatch() {
   for (const [re, handler] of ROUTES) {
     const m = location.pathname.match(re);
     if (m) { handler(m[1]); return; }
@@ -89,7 +98,7 @@ document.addEventListener("click", e => {
 /* Every view is a pre-existing sibling div toggled by display. Hiding all of
    them by name here, rather than each show* function hiding the others, is what
    keeps a fourth view from silently leaving a third one on screen. */
-const VIEW_IDS = ["view-landing", "view-album", "view-match"];
+const VIEW_IDS = ["view-landing", "view-album", "view-match", "view-about"];
 
 function showView(id) {
   for (const v of VIEW_IDS) document.getElementById(v).style.display = v === id ? "block" : "none";
@@ -98,6 +107,13 @@ function showView(id) {
 function showLanding() {
   showView("view-landing");
   document.title = BASE_TITLE;
+}
+
+/* Static markup, no fetch — the panel is already in the document. */
+function showAboutView() {
+  showView("view-about");
+  document.title = `About · ${BASE_TITLE}`;
+  window.scrollTo(0, 0);
 }
 
 function showAlbumView(albumId) {

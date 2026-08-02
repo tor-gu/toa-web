@@ -1,8 +1,9 @@
-/* Tournament of Albums — shared festive header behavior.
-   On load: fills any .header-deco with the doodle SVGs and animates the
-   header <h1> into hopping, multi-colored characters. Included by index.html
-   and viz.html; both just need a `.page-header` with an <h1> and (optionally)
-   an empty `<div class="header-deco"></div>`.
+/* Tournament of Albums — shared page chrome.
+   On load: fills any .header-deco with the doodle SVGs, animates the header
+   <h1> into hopping, multi-colored characters, and inserts the site-wide
+   navigation tabs after the header. Included by index.html, viz.html and
+   404.html; all they need is a `.page-header` with an <h1> and (optionally) an
+   empty `<div class="header-deco"></div>`.
    Also renders the non-prod environment banner from window.TOA_CONFIG. */
 (function () {
   "use strict";
@@ -36,6 +37,60 @@
       .join("");
   }
 
+  /* ── Navigation tabs ──────────────────────────────────────────
+     Generated here rather than written into each document: there is no
+     templating step, and the alternative is three copies to keep in sync —
+     one of which would inevitably forget to carry the query string below. */
+
+  const TABS = [
+    { href: "/", label: "Current Rankings" },
+    { href: "/viz.html", label: "Cool Visualization" },
+    { href: "/about", label: "About" },
+  ];
+
+  /* /album/<id> and /match/<id> are sub-views of the standings, so they light
+     up the Rankings tab. 404.html is served for arbitrary paths and matches
+     nothing — no tab is active, which is the honest answer. */
+  function activeTab(pathname) {
+    if (pathname === "/viz.html") return "/viz.html";
+    if (/^\/about\/?$/.test(pathname)) return "/about";
+    if (pathname === "/" || /^\/(album|match)\//.test(pathname)) return "/";
+    return null;
+  }
+
+  function renderNav() {
+    const header = document.querySelector(".page-header");
+    if (!header) return;
+    const nav = document.createElement("nav");
+    nav.className = "tab-nav";
+    nav.setAttribute("aria-label", "Site sections");
+    for (const t of TABS) {
+      const a = document.createElement("a");
+      a.className = "tab-link";
+      /* Carrying location.search is the point: the ?api= override lives in the
+         query string, and a tab that dropped it would quietly return a test
+         session to the prod API. app.js's navigate() does the same.
+         Set as a property rather than interpolated into innerHTML — the query
+         string is attacker-controlled and must never reach an HTML parser. */
+      a.href = t.href + location.search;
+      a.textContent = t.label;
+      nav.append(a);
+    }
+    header.after(nav);
+    updateActiveTab();
+  }
+
+  /* Exported because index.html navigates by pushState, which fires no event
+     this file could listen for — app.js's route() calls this after each hop. */
+  function updateActiveTab() {
+    const current = activeTab(location.pathname);
+    document.querySelectorAll(".tab-nav .tab-link").forEach((a) => {
+      if (a.pathname === current) a.setAttribute("aria-current", "page");
+      else a.removeAttribute("aria-current");
+    });
+  }
+  window.TOA_updateActiveTab = updateActiveTab;
+
   /* Flags any environment that isn't prod, so a test tab is never mistaken
      for the real standings. Driven by config.js, which Terraform generates
      per environment. */
@@ -53,6 +108,7 @@
     renderEnvBanner();
     renderHeaderDeco();
     animateTitle();
+    renderNav();
   }
 
   if (document.readyState === "loading") {
