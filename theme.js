@@ -44,16 +44,20 @@
 
   const TABS = [
     { href: "/", label: "Current Rankings" },
-    { href: "/viz.html", label: "Cool Visualization" },
+    { href: "/viz", label: "Cool Visualization" },
     { href: "/about", label: "About" },
   ];
 
   /* /album/<id> and /match/<id> are sub-views of the standings, so they light
      up the Rankings tab. 404.html is served for arbitrary paths and matches
-     nothing — no tab is active, which is the honest answer. */
+     nothing — no tab is active, which is the honest answer.
+
+     The extensionless /viz and /about are the canonical URLs, but the underlying
+     /viz.html and /about.html are real bucket keys and still serve, so both forms
+     match — otherwise those URLs would render with no tab active at all. */
   function activeTab(pathname) {
-    if (pathname === "/viz.html") return "/viz.html";
-    if (/^\/about\/?$/.test(pathname)) return "/about";
+    if (/^\/viz(\.html)?\/?$/.test(pathname)) return "/viz";
+    if (/^\/about(\.html)?\/?$/.test(pathname)) return "/about";
     if (pathname === "/" || /^\/(album|match)\//.test(pathname)) return "/";
     return null;
   }

@@ -46,12 +46,11 @@ function matchHref(id) { return `/match/${encodeURIComponent(id)}`; }
    feed, and crawled, so they have to mean something to anything that doesn't
    run JS. CloudFront serves index.html for them — see
    toa-terraform/modules/toa-web/router.js, which must know the same prefixes
-   this table does. */
+   this table does.*/
 
 const ROUTES = [
   [/^\/album\/([0-9a-f]+)\/?$/i, id => showAlbumView(id)],
   [/^\/match\/([0-9a-f]+)\/?$/i, id => showMatchView(id)],
-  [/^\/about\/?$/i, () => showAboutView()],
 ];
 
 function route() {
@@ -84,7 +83,7 @@ function isRoutedPath(pathname) {
 
 /* Bailing out on modifier keys, non-primary buttons and target/download is
    what keeps cmd-click, middle-click and "open in new tab" behaving like
-   ordinary links. Anything not in the route table (e.g. /viz.html) is left
+   ordinary links. Anything not in the route table (e.g. /viz, /about) is left
    alone and does a real page load. */
 document.addEventListener("click", e => {
   if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
@@ -98,7 +97,7 @@ document.addEventListener("click", e => {
 /* Every view is a pre-existing sibling div toggled by display. Hiding all of
    them by name here, rather than each show* function hiding the others, is what
    keeps a fourth view from silently leaving a third one on screen. */
-const VIEW_IDS = ["view-landing", "view-album", "view-match", "view-about"];
+const VIEW_IDS = ["view-landing", "view-album", "view-match"];
 
 function showView(id) {
   for (const v of VIEW_IDS) document.getElementById(v).style.display = v === id ? "block" : "none";
@@ -107,13 +106,6 @@ function showView(id) {
 function showLanding() {
   showView("view-landing");
   document.title = BASE_TITLE;
-}
-
-/* Static markup, no fetch — the panel is already in the document. */
-function showAboutView() {
-  showView("view-about");
-  document.title = `About · ${BASE_TITLE}`;
-  window.scrollTo(0, 0);
 }
 
 function showAlbumView(albumId) {

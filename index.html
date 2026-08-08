@@ -293,19 +293,6 @@
     }
     #match-table-wrap .ranking-delta { display: inline-block; }
 
-    /* ── About view ─────────────────────────────────────────── */
-    #about-panel {
-      background: var(--surface);
-      border: 2px solid var(--ink);
-      border-radius: 12px;
-      padding: 1.2rem 1.4rem;
-      box-shadow: 4px 4px 0 var(--pink);
-      max-width: 46rem;
-    }
-    #about-panel p { margin: 0 0 0.9rem; font-size: 0.95rem; line-height: 1.6; }
-    #about-panel p:last-child { margin-bottom: 0; }
-    .about-placeholder { color: var(--ink-soft); font-style: italic; }
-
     @media (max-width: 600px) {
       #history-panes { flex-direction: column; }
       #score-pane, #match-pane { flex: none; width: 100%; }
@@ -385,18 +372,6 @@
     <div id="match-panel">
       <p id="match-view-status"></p>
       <div id="match-table-wrap"></div>
-    </div>
-  </div>
-
-  <div id="view-about" style="display:none">
-    <div class="section-label">About</div>
-    <div id="about-panel">
-      <p>
-        This is the Tournament of Albums.
-      </p>
-      <p class="about-placeholder">
-        Eventually, I will place an explanation here. But I have yet done so.
-      </p>
     </div>
   </div>
 

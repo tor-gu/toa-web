@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>About &middot; Tournament of Albums</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  <!-- Root-absolute, not document-relative: this document is served at /about
+       (and /about/, where "theme.css" would resolve to /about/theme.css). -->
+  <link rel="stylesheet" href="/theme.css">
+  <!-- config.js only, no api.js: this page makes no API calls. theme.js reads
+       window.TOA_CONFIG for the non-prod banner, so config.js must load first. -->
+  <script src="/config.js"></script>
+  <script src="/theme.js" defer></script>
+  <style>
+    /* Tokens, reset, body base, focus, festive header, navigation tabs, and
+       .section-label live in the shared theme.css. Page-specific rules only. */
+    body { padding-bottom: 4rem; }
+
+    /* Long-form prose, so the panel is capped near a comfortable measure rather
+       than filling the 1100px body. */
+    #about-panel {
+      background: var(--surface);
+      border: 2px solid var(--ink);
+      border-radius: 12px;
+      padding: 1.2rem 1.4rem;
+      box-shadow: 4px 4px 0 var(--pink);
+      max-width: 46rem;
+    }
+    #about-panel p { margin: 0 0 0.9rem; font-size: 0.95rem; line-height: 1.6; }
+    #about-panel > :last-child { margin-bottom: 0; }
+    .about-placeholder { color: var(--ink-soft); font-style: italic; }
+
+    /* Section headings for the sections this page will grow. Each carries an id,
+       so /about#<id> is a working deep link with no routing involved. */
+    #about-panel h2 {
+      font-family: 'Bungee', sans-serif;
+      font-size: 1.05rem;
+      color: var(--violet);
+      margin: 1.8rem 0 0.7rem;
+      padding-bottom: 0.25rem;
+      border-bottom: 3px solid var(--cyan);
+    }
+    #about-panel h2:first-child { margin-top: 0; }
+    #about-panel h3 {
+      font-size: 0.9rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      color: var(--ink-soft);
+      margin: 1.3rem 0 0.5rem;
+    }
+    /* Offset so an #anchor jump doesn't tuck the heading under the fixed
+       non-prod banner. */
+    #about-panel :target { scroll-margin-top: 3rem; }
+
+    #about-panel ul, #about-panel ol { margin: 0 0 0.9rem; padding-left: 1.4rem; }
+    #about-panel li { font-size: 0.95rem; line-height: 1.6; margin-bottom: 0.3rem; }
+    #about-panel a { color: var(--violet); text-decoration-thickness: 2px; }
+    #about-panel a:hover { color: var(--pink); }
+    #about-panel code {
+      font-size: 0.88em;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      padding: 0.05em 0.3em;
+    }
+  </style>
+</head>
+<body>
+  <div class="page-header">
+    <div class="header-deco"></div>
+    <h1>Tournament of Albums</h1>
+  </div>
+
+  <main>
+    <div class="section-label">About</div>
+    <article id="about-panel">
+      <p>
+        This is the Tournament of Albums.
+      </p>
+      <p class="about-placeholder">
+        Eventually, I will place an explanation here. But I have not yet done so.
+      </p>
+    </article>
+  </main>
+</body>
+</html>
