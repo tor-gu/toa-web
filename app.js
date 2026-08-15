@@ -36,6 +36,11 @@ let currentFilter = "", currentSort = { col: null, dir: "asc" };
 // Album view state — reset when the focal album changes
 let focalAlbumId = null, activeAlbumIds = new Set(), albumColorMap = {};
 let usedColorIndices = new Set(), pendingFetches = 0, activeChart = null;
+// Startup sequencing. route() runs before /scores lands, so an album deep link
+// can be dispatched with nothing to name the album yet: it shows a placeholder
+// and sets routeDeferred, and load() re-dispatches once. 
+// scoresState can be 'ready', 'loading', or 'error'
+let scoresState = "loading", routeDeferred = false;
 
 function esc(s) { return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
 function albumHref(id) { return `/album/${encodeURIComponent(id)}`; }
@@ -62,6 +67,10 @@ function route() {
 }
 
 function dispatch() {
+  /* Recomputed by whichever handler runs below, so navigating away during the
+     /scores flight cancels load()'s re-dispatch instead of re-running — and
+     re-fetching — whatever view replaced it. */
+  routeDeferred = false;
   for (const [re, handler] of ROUTES) {
     const m = location.pathname.match(re);
     if (m) { handler(m[1]); return; }
@@ -117,11 +126,27 @@ function showAlbumView(albumId) {
     resetComparison();
     focalAlbumId = null;
     artistEl.textContent = "";
+    document.getElementById("history-canvas-wrap").style.display = "none";
+    const status = document.getElementById("history-status");
+    /* A deep link that beat /scores here. The id may well be fine — we just have
+       no artist/album to print yet, so don't claim it doesn't exist. No
+       document.title write: better to leave the document's own title standing
+       than flicker through a placeholder. load() re-dispatches when it lands. */
+    if (scoresState === "loading") {
+      routeDeferred = true;
+      titleEl.textContent = "Loading…";
+      return;
+    }
+    if (scoresState === "error") {
+      titleEl.textContent = "Standings unavailable";
+      status.textContent = "Couldn't load the standings, so this album can't be looked up.";
+      status.className = "error";
+      return;
+    }
     titleEl.textContent = "Album not found";
     document.title = "Album not found · Tournament of Albums";
-    document.getElementById("history-status").textContent = "No album with this id is on record.";
-    document.getElementById("history-status").className = "error";
-    document.getElementById("history-canvas-wrap").style.display = "none";
+    status.textContent = "No album with this id is on record.";
+    status.className = "error";
     return;
   }
   artistEl.textContent = meta.artist;
@@ -516,6 +541,7 @@ async function load() {
     document.getElementById("date").textContent = `MOST RECENT MATCH: ${data.date}`;
     allScores = [...data.scores].sort((a, b) => (a.rank ?? Infinity) - (b.rank ?? Infinity));
     scoresById = Object.fromEntries(allScores.map(s => [s.id, s]));
+    scoresState = "ready";
     document.getElementById("content").innerHTML = `
       <table>
         <thead><tr>
@@ -541,12 +567,22 @@ async function load() {
     });
     document.getElementById("search").addEventListener("input", e => { currentFilter = e.target.value; renderTable(); });
   } catch (e) {
+    scoresState = "error";
     document.getElementById("content").innerHTML = `<div id="error">Scoreboards Unavailable — ${esc(e.message)}</div>`;
   }
-  route();
+  /* route() already ran at startup. Re-dispatch only for a view that was waiting
+     on this payload: re-running the match route would restart its fetch — the
+     currentMatchId guard can't help, the id is unchanged, so both responses
+     write — and scrollTo(0,0) would yank a reader who had started scrolling. */
+  if (routeDeferred) route();
 }
 
 window.addEventListener("popstate", route);
 initCompareBox();
+/* Dispatch before the fetches, not after. If we route() here, every deep link 
+   would sit on the landing view until /scoresresolved. The match view needs 
+   nothing from that payload; the album view shows a placeholder and 
+   load() re-dispatches for it. */
+route();
 load();
 loadRecentMatches();
