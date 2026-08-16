@@ -44,7 +44,7 @@
 
   const TABS = [
     { href: "/", label: "Current Rankings" },
-    { href: "/viz", label: "Cool Visualization" },
+    { href: "/viz", label: "Visualization" },
     { href: "/about", label: "About" },
   ];
 
