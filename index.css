@@ -27,19 +27,6 @@ body { padding-bottom: 4rem; }
   margin: 0.45rem 0 0;
 }
 
-/* ── WIP notice ─────────────────────────────────────────── */
-#wip-notice {
-  background: var(--yellow);
-  border: 2px solid var(--ink);
-  border-radius: 10px;
-  color: var(--ink);
-  font-size: 0.85rem;
-  font-weight: 600;
-  padding: 0.5rem 0.9rem;
-  margin: 0 0 1rem;
-  box-shadow: 3px 3px 0 var(--pink);
-}
-
 /* ── Loading / Error ────────────────────────────────────── */
 #loading { color: var(--ink-soft); font-size: 0.9rem; font-weight: 600; }
 #error {

@@ -18,6 +18,7 @@ function rankColor(rank) {
 }
 const API_BASE_URL = window.TOA_API_BASE_URL;
 const BASE_TITLE = "Tournament of Albums";
+const pageTitle = (subtitle) => (subtitle ? `${BASE_TITLE} — ${subtitle}` : BASE_TITLE);
 const COLORS = [
   { border: "#FF3D7F", bg: "rgba(255,61,127,0.12)" },
   { border: "#1EC8E0", bg: "rgba(30,200,224,0.12)" },
@@ -119,7 +120,7 @@ function showView(id) {
 
 function showLanding() {
   showView("view-landing");
-  document.title = BASE_TITLE;
+  document.title = pageTitle();
 }
 
 function showAlbumView(albumId) {
@@ -149,14 +150,14 @@ function showAlbumView(albumId) {
       return;
     }
     titleEl.textContent = "Album not found";
-    document.title = "Album not found · Tournament of Albums";
+    document.title = pageTitle("Album not found");
     status.textContent = "No album with this id is on record.";
     status.className = "error";
     return;
   }
   artistEl.textContent = meta.artist;
   titleEl.textContent = meta.album;
-  document.title = `${meta.artist} — ${meta.album} · Tournament of Albums`;
+  document.title = pageTitle(`${meta.album} — ${meta.artist}`);
   if (focalAlbumId !== albumId) {
     resetComparison();
     focalAlbumId = albumId;
@@ -602,7 +603,7 @@ async function showMatchView(matchId) {
   const statusEl = document.getElementById("match-view-status");
   document.getElementById("match-title").textContent = "";
   document.getElementById("match-subtitle").textContent = "";
-  document.title = `Match Results · ${BASE_TITLE}`;
+  document.title = pageTitle("Match Results");
   document.getElementById("match-table-wrap").innerHTML = "";
   statusEl.textContent = "Loading…"; statusEl.className = "";
   try {
@@ -610,7 +611,7 @@ async function showMatchView(matchId) {
     if (currentMatchId !== matchId) return;
     if (res.status === 404) {
       document.getElementById("match-title").textContent = "Match not found";
-      document.title = `Match not found · ${BASE_TITLE}`;
+      document.title = pageTitle("Match not found");
       statusEl.textContent = "No match with this id is on record.";
       statusEl.className = "error";
       return;
@@ -630,7 +631,7 @@ function renderMatchView({ date, ranking }) {
   document.getElementById("match-title").textContent = date;
   document.getElementById("match-subtitle").textContent =
     `${ranking.length} album${ranking.length === 1 ? "" : "s"}`;
-  document.title = `Match ${date} · ${BASE_TITLE}`;
+  document.title = pageTitle(`Match ${date}`);
   document.getElementById("match-view-status").textContent = "";
   document.getElementById("match-view-status").className = "";
   document.getElementById("match-table-wrap").innerHTML = `
