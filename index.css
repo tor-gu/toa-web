@@ -5,13 +5,12 @@
 
 body { padding-bottom: 4rem; }
 .page-layout { display: flex; gap: 1.75rem; align-items: flex-start; }
+/* Surface, border, radius and shadow come from .panel in theme.css; padding is
+   per-panel by design, so it stays here. Same for the two below. */
 #recent-matches-panel {
+  --panel-accent: var(--cyan);
   flex: 0 0 260px;
-  background: var(--surface);
-  border: 2px solid var(--ink);
-  border-radius: 12px;
   padding: 1rem 1.1rem 1.1rem;
-  box-shadow: 4px 4px 0 var(--cyan);
 }
 #recent-matches-list { border: 2px solid var(--ink); border-radius: 8px; }
 .page-main { flex: 1 1 auto; min-width: 0; }
@@ -126,11 +125,8 @@ th.sort-active .sort-indicator { color: var(--pink); }
 
 /* ── History Panel ──────────────────────────────────────── */
 #history-panel {
-  background: var(--surface);
-  border: 2px solid var(--ink);
-  border-radius: 12px;
+  --panel-accent: var(--yellow);
   padding: 1rem 1.25rem 1.25rem;
-  box-shadow: 4px 4px 0 var(--yellow);
 }
 #history-panel h2 {
   margin: 0 0 0.6rem;
@@ -307,11 +303,8 @@ th.sort-active .sort-indicator { color: var(--pink); }
 }
 #match-subtitle { font-size: 0.8rem; font-weight: 500; color: var(--ink-soft); }
 #match-panel {
-  background: var(--surface);
-  border: 2px solid var(--ink);
-  border-radius: 12px;
+  --panel-accent: var(--violet);
   padding: 1rem 1.25rem 1.25rem;
-  box-shadow: 4px 4px 0 var(--violet);
 }
 #match-view-status { color: var(--ink-soft); font-size: 0.85rem; margin: 0; font-weight: 500; }
 #match-view-status.error { color: var(--pink); }

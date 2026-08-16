@@ -103,6 +103,19 @@ h1 {
   box-shadow: 3px 3px 0 var(--violet);
 }
 
+/* ── Panel ───────────────────────────────────────────────────── */
+/* The site's signature card, used on several pages. Padding is deliberately
+   not set here — every panel wants its own. The accent is a custom property rather than
+   a modifier class per colour; Note the fallback -- this is here because an unresolved 
+   var() is invalid at computed-value time.
+ */
+.panel {
+  background: var(--surface);
+  border: 2px solid var(--ink);
+  border-radius: 12px;
+  box-shadow: 4px 4px 0 var(--panel-accent, var(--cyan));
+}
+
 /* ── Section label ───────────────────────────────────────────── */
 .section-label {
   font-family: 'Bungee', sans-serif;

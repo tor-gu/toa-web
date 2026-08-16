@@ -22,11 +22,8 @@
     /* Long-form prose, so the panel is capped near a comfortable measure rather
        than filling the 1100px body. */
     #about-panel {
-      background: var(--surface);
-      border: 2px solid var(--ink);
-      border-radius: 12px;
+      --panel-accent: var(--pink);
       padding: 1.2rem 1.4rem;
-      box-shadow: 4px 4px 0 var(--pink);
       max-width: 46rem;
     }
     #about-panel p { margin: 0 0 0.9rem; font-size: 0.95rem; line-height: 1.6; }
@@ -75,7 +72,7 @@
 
   <main>
     <div class="section-label">About</div>
-    <article id="about-panel">
+    <article id="about-panel" class="panel">
       <p>
         This is the Tournament of Albums.
       </p>
