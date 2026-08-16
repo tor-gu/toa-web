@@ -224,10 +224,15 @@
       border-radius: 0 0 6px 6px;
       margin: 0.45rem -0.7rem -0.45rem; padding: 0.4rem 0.7rem;
     }
+    /* Two-end row so the click hint costs no height on a tooltip already close
+       to the chart's own. Violet is the tooltip's existing accent, so the hint
+       reads as the interactive part without spending a new colour. */
     #chart-tooltip .tt-match-label {
+      display: flex; justify-content: space-between; gap: 1.2rem;
       font-size: 0.6rem; font-weight: 700; letter-spacing: 0.08em;
       text-transform: uppercase; color: var(--ink-soft); margin-bottom: 0.3rem;
     }
+    #chart-tooltip .tt-match-cta { color: var(--violet); }
     #chart-tooltip .tt-rank { display: flex; gap: 0.35rem; }
     #chart-tooltip .tt-rank-num { font-weight: 700; color: var(--violet); min-width: 1.1em; }
     /* The hovered album's row punches back out of the shading onto the same

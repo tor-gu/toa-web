@@ -328,6 +328,23 @@ function rebuildChart() {
          cursor. getElementsAtEventForMode reads this same config, so a click
          handler added later lands on the point the tooltip is describing. */
       interaction: { mode: "nearest", intersect: true },
+      /* options.hover inherits from options.interaction, so `elements` has
+         already been resolved the same way the tooltip's was — this is the
+         point being described, and needs no second hit test. Empty plot area
+         and non-match points both fall through and do nothing. */
+      onClick: (e, elements, chart) => {
+        const hit = elements[0];
+        if (!hit) return;
+        const point = chartPointAt(chart, hit.datasetIndex, hit.index);
+        if (point?.matchId) navigate(matchHref(point.matchId));
+      },
+      // Match diamonds are the only clickable thing on the canvas, so the
+      // affordance stops there. Guarded to avoid a style write per mousemove.
+      onHover: (e, elements, chart) => {
+        const hit = elements[0];
+        const want = hit && chartPointAt(chart, hit.datasetIndex, hit.index)?.matchId ? "pointer" : "default";
+        if (chart.canvas.style.cursor !== want) chart.canvas.style.cursor = want;
+      },
       plugins: { legend: { display: false }, tooltip: { enabled: false, external: renderChartTooltip } },
       scales: {
         x: { ticks: { maxRotation: 45, autoSkip: true, maxTicksLimit: 10, color: '#5A5A72', font: { family: "'Poppins', sans-serif", size: 11 } }, grid: { color: 'rgba(26,26,46,0.07)' }, border: { color: 'rgba(26,26,46,0.15)' } },
@@ -339,11 +356,10 @@ function rebuildChart() {
 
 /* ── Chart tooltip ──────────────────────────────────────────
    An element rather than Chart.js's canvas-drawn tooltip, because a match's
-   ranking wants markup. Resolution is split out from rendering so that the
-   answer to "which point is this" isn't locked inside the tooltip: a click
-   handler would get its element from
-   chart.getElementsAtEventForMode(e, "nearest", { intersect: true }, false)
-   and read it through the same chartPointAt. */
+   ranking wants markup. Resolution is split out from rendering so the answer to
+   "which point is this" isn't locked inside the tooltip: onClick and onHover
+   above read the same chartPointAt, which is what keeps the click landing on
+   the point the tooltip is describing. */
 
 function chartPointAt(chart, datasetIndex, dataIndex) {
   const dataset = chart.data?.datasets?.[datasetIndex];
@@ -374,7 +390,13 @@ function chartTooltipHtml({ albumId, date, score, matchId }, failed = false) {
         `<span class="tt-rank-num">${item.rank}.</span>` +
         `${esc(item["short-name"] || item.album)}</div>`).join("")
     : `<div class="tt-loading">${failed ? "Results unavailable." : "Loading…"}</div>`;
-  return html + `<div class="tt-match"><div class="tt-match-label">Match results</div>${body}</div>`;
+  // The hint goes when the fetch failed: the match view calls the same
+  // /results/{id}, so pointing at it there would just promise a second error.
+  // The click itself stays live either way.
+  return html + `<div class="tt-match">` +
+    `<div class="tt-match-label"><span>Match results</span>` +
+    `${failed ? "" : `<span class="tt-match-cta">Click →</span>`}</div>` +
+    `${body}</div>`;
 }
 
 function hideChartTooltip() {
@@ -392,27 +414,37 @@ function renderChartTooltip({ chart, tooltip }) {
 
   const key = `${point.albumId}|${point.date}`;
   chartHoverKey = key;
-  el.innerHTML = chartTooltipHtml(point);
-  el.style.display = "block";
+  // Content and position go together: the clamps below are measured off the
+  // rendered box, so a later rewrite that skipped repositioning would leave a
+  // "Loading…"-sized placement on a full-height tooltip and overflow the pane.
+  const place = html => {
+    el.innerHTML = html;
+    el.style.display = "block";
+    positionChartTooltip(el, chart, tooltip.caretX, tooltip.caretY);
+  };
+  place(chartTooltipHtml(point));
 
   // A match marker on a cold cache renders "Loading…" and fills itself in. The
   // key guard is what stops a slow response from redrawing a tooltip the cursor
   // has already left, or one now describing a different point.
   if (point.matchId && !matchResultCache[point.matchId]) {
-    const settle = failed => { if (chartHoverKey === key) el.innerHTML = chartTooltipHtml(point, failed); };
+    const settle = failed => { if (chartHoverKey === key) place(chartTooltipHtml(point, failed)); };
     fetchMatchResult(point.matchId).then(() => settle(false), () => settle(true));
   }
+}
 
-  // caretX/Y are canvas-relative and #history-canvas-wrap is the positioned
-  // ancestor, so the offsets line the two coordinate spaces up. Both axes are
-  // then kept inside the wrapper: a match tooltip is seven lines tall against a
-  // 260px chart, so left unclamped it covers the date labels below the plot and
-  // runs on past the panel. Horizontally it flips to the other side of the
-  // cursor, which reads better than sliding; vertically it just slides, since
-  // flipping a box this tall lands it under the cursor as often as not.
+/* caretX/Y are canvas-relative and #history-canvas-wrap is the positioned
+   ancestor, so the offsets line the two coordinate spaces up. Both axes are then
+   kept inside the wrapper: a match tooltip is nine lines tall against a 260px
+   chart, so left unclamped it covers the date labels below the plot and runs on
+   past the panel. Horizontally it flips to the other side of the cursor, which
+   reads better than sliding; vertically it just slides, since flipping a box
+   this tall lands it under the cursor as often as not. Must run with the final
+   content already in the element — it measures offsetWidth/offsetHeight. */
+function positionChartTooltip(el, chart, caretX, caretY) {
   const wrap = el.offsetParent ?? chart.canvas.parentNode;
-  const left = chart.canvas.offsetLeft + tooltip.caretX;
-  const top = chart.canvas.offsetTop + tooltip.caretY + 14;
+  const left = chart.canvas.offsetLeft + caretX;
+  const top = chart.canvas.offsetTop + caretY + 14;
   el.style.left = `${left + el.offsetWidth + 14 > wrap.clientWidth ? Math.max(0, left - el.offsetWidth - 14) : left + 14}px`;
   el.style.top = `${Math.max(0, Math.min(top, wrap.clientHeight - el.offsetHeight))}px`;
 }
