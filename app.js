@@ -29,13 +29,18 @@ const COLORS = [
 
 // Cached across navigations. matchResultCache holds whole /results/{id} bodies
 // ({match_id, date, ranking}) — the accordions want the ranking, the match view
-// also wants the date, and both share the fetch.
-let allScores = [], scoresById = {}, albumDataCache = {}, albumNames = {}, matchResultCache = {};
+// also wants the date, and both share the fetch. matchFetches holds the in-flight
+// promises: the chart tooltip re-fires on every mousemove over one match marker,
+// so without it a slow hover would open a request per frame.
+let allScores = [], scoresById = {}, albumDataCache = {}, albumNames = {}, matchResultCache = {}, matchFetches = {};
 // Landing view state
 let currentFilter = "", currentSort = { col: null, dir: "asc" };
 // Album view state — reset when the focal album changes
 let focalAlbumId = null, activeAlbumIds = new Set(), albumColorMap = {};
 let usedColorIndices = new Set(), pendingFetches = 0, activeChart = null;
+// Identifies the point the chart tooltip is currently describing, so a /results
+// fetch that lands after the cursor has moved on doesn't overwrite it.
+let chartHoverKey = null;
 // Startup sequencing. route() runs before /scores lands, so an album deep link
 // can be dispatched with nothing to name the album yet: it shows a placeholder
 // and sets routeDeferred, and load() re-dispatches once. 
@@ -166,6 +171,7 @@ function showAlbumView(albumId) {
 }
 
 function resetComparison() {
+  hideChartTooltip();
   if (activeChart) { activeChart.destroy(); activeChart = null; }
   activeAlbumIds = new Set(); albumColorMap = {}; usedColorIndices = new Set();
   document.getElementById("history-chips").innerHTML = "";
@@ -257,7 +263,10 @@ async function addAlbum(albumId, artist, albumName, shortName) {
       if (!histRes.ok) throw new Error(`HTTP ${histRes.status}`);
       const data = await histRes.json();
       const matchList = matchRes.ok ? (await matchRes.json()).matches : [];
-      const matchByDate = {}; for (const m of matchList) matchByDate[m.date] = true;
+      // Keyed by date rather than listing matches, because the chart addresses
+      // points by date. The value is the match id so the tooltip can reach the
+      // ranking; every read of it is a truthiness test, which an id satisfies.
+      const matchByDate = {}; for (const m of matchList) matchByDate[m.date] = m.match_id;
       const resolvedShortName = data.album?.['short-name'] || shortName || albumName;
       albumNames[albumId] = { artist, albumName, shortName: resolvedShortName };
       albumDataCache[albumId] = { artist, albumName, shortName: resolvedShortName, history: data.history, matchByDate, matchList };
@@ -287,6 +296,10 @@ function rebuildChart() {
   const status = document.getElementById("history-status");
   const wrap = document.getElementById("history-canvas-wrap");
   const canvas = document.getElementById("history-canvas");
+  // Chart.js hides the tooltip by firing the external handler with opacity 0 on
+  // mouseout, but a destroyed chart never gets there — and this runs on every
+  // chip add/remove, so the tooltip has to be cleared by hand.
+  hideChartTooltip();
   if (activeChart) { activeChart.destroy(); activeChart = null; }
   if (activeAlbumIds.size === 0) return;
   const ready = [...activeAlbumIds].filter(id => albumDataCache[id]);
@@ -296,7 +309,11 @@ function rebuildChart() {
     const { albumName, shortName, history, matchByDate } = albumDataCache[id];
     const scoreByDate = Object.fromEntries(history.map(h => [h.date, h.score]));
     const color = COLORS[albumColorMap[id] ?? 0];
-    return { label: shortName||albumName, data: allDates.map(d => scoreByDate[d] ?? null), borderColor: color.border, backgroundColor: color.bg, tension: 0.2, spanGaps: true, pointStyle: ctx => matchByDate[allDates[ctx.dataIndex]] ? 'rectRot' : 'circle', pointBackgroundColor: color.border, pointRadius: ctx => matchByDate[allDates[ctx.dataIndex]] ? 6 : 0, pointHoverRadius: ctx => matchByDate[allDates[ctx.dataIndex]] ? 8 : 4, yAxisID: "yScore", _matchByDate: matchByDate };
+    // pointHitRadius is what makes the radius-0 non-match points hoverable at
+    // all: PointElement.inRange tests against hitRadius + radius. 8px is about
+    // the spacing between dates, so the line stays continuously hoverable in x
+    // while still demanding the cursor be near it in y.
+    return { label: shortName||albumName, data: allDates.map(d => scoreByDate[d] ?? null), borderColor: color.border, backgroundColor: color.bg, tension: 0.2, spanGaps: true, pointStyle: ctx => matchByDate[allDates[ctx.dataIndex]] ? 'rectRot' : 'circle', pointBackgroundColor: color.border, pointRadius: ctx => matchByDate[allDates[ctx.dataIndex]] ? 6 : 0, pointHoverRadius: ctx => matchByDate[allDates[ctx.dataIndex]] ? 8 : 4, pointHitRadius: 8, yAxisID: "yScore", _albumId: id };
   });
   if (pendingFetches === 0) { status.textContent = ""; wrap.style.display = "block"; }
   renderChips();
@@ -304,14 +321,100 @@ function rebuildChart() {
     type: "line", data: { labels: allDates, datasets },
     options: {
       responsive: true, maintainAspectRatio: false,
-      interaction: { mode: "index", intersect: false },
-      plugins: { legend: { display: false }, tooltip: { backgroundColor: '#FFFFFF', borderColor: '#1A1A2E', borderWidth: 2, titleColor: '#7C3AED', bodyColor: '#1A1A2E', padding: 10 } },
+      /* 'index' + intersect:false named a whole date column, so the tooltip
+         fired anywhere in the plot area and listed every charted album — the y
+         position, the only thing saying which line you mean, was ignored.
+         'nearest' + intersect:true resolves to the one point actually under the
+         cursor. getElementsAtEventForMode reads this same config, so a click
+         handler added later lands on the point the tooltip is describing. */
+      interaction: { mode: "nearest", intersect: true },
+      plugins: { legend: { display: false }, tooltip: { enabled: false, external: renderChartTooltip } },
       scales: {
         x: { ticks: { maxRotation: 45, autoSkip: true, maxTicksLimit: 10, color: '#5A5A72', font: { family: "'Poppins', sans-serif", size: 11 } }, grid: { color: 'rgba(26,26,46,0.07)' }, border: { color: 'rgba(26,26,46,0.15)' } },
         yScore: { type: "linear", position: "left", min: -1.5, max: 1.5, title: { display: true, text: "Score", color: '#5A5A72', font: { family: "'Poppins', sans-serif", size: 11 } }, ticks: { color: '#5A5A72', font: { family: "'Poppins', sans-serif", size: 11 } }, grid: { color: 'rgba(26,26,46,0.07)' }, border: { color: 'rgba(26,26,46,0.15)' } },
       },
     },
   });
+}
+
+/* ── Chart tooltip ──────────────────────────────────────────
+   An element rather than Chart.js's canvas-drawn tooltip, because a match's
+   ranking wants markup. Resolution is split out from rendering so that the
+   answer to "which point is this" isn't locked inside the tooltip: a click
+   handler would get its element from
+   chart.getElementsAtEventForMode(e, "nearest", { intersect: true }, false)
+   and read it through the same chartPointAt. */
+
+function chartPointAt(chart, datasetIndex, dataIndex) {
+  const dataset = chart.data?.datasets?.[datasetIndex];
+  const albumId = dataset?._albumId;
+  const date = chart.data?.labels?.[dataIndex];
+  if (!albumId || !date) return null;
+  // dataset.data is a flat array of numbers/nulls indexed by allDates, so the
+  // raw value is the score — no need to go through the parsed scale values.
+  const score = dataset.data[dataIndex];
+  return { albumId, date, score, matchId: albumDataCache[albumId]?.matchByDate?.[date] || null };
+}
+
+function chartTooltipHtml({ albumId, date, score, matchId }, failed = false) {
+  const { shortName, albumName } = albumNames[albumId] || {};
+  const color = COLORS[albumColorMap[albumId] ?? 0].border;
+  let html =
+    `<div class="tt-date">${esc(date)}</div>` +
+    `<div class="tt-album"><span class="tt-dot" style="background:${color}"></span>` +
+    `${esc(shortName || albumName || albumId)}` +
+    `<span class="tt-score">${score == null ? "–" : score.toFixed(3)}</span></div>`;
+  if (!matchId) return html;
+  // The pending and failed lines go inside the panel too, so it appears at full
+  // width straight away and the label says what is being waited on.
+  const result = matchResultCache[matchId];
+  const body = result
+    ? result.ranking.map(item =>
+        `<div class="tt-rank${item.id === albumId ? " focal" : ""}">` +
+        `<span class="tt-rank-num">${item.rank}.</span>` +
+        `${esc(item["short-name"] || item.album)}</div>`).join("")
+    : `<div class="tt-loading">${failed ? "Results unavailable." : "Loading…"}</div>`;
+  return html + `<div class="tt-match"><div class="tt-match-label">Match results</div>${body}</div>`;
+}
+
+function hideChartTooltip() {
+  const el = document.getElementById("chart-tooltip");
+  if (el) el.style.display = "none";
+  chartHoverKey = null;
+}
+
+function renderChartTooltip({ chart, tooltip }) {
+  const el = document.getElementById("chart-tooltip");
+  if (!el) return;
+  const dp = tooltip.opacity === 0 ? null : tooltip.dataPoints?.[0];
+  const point = dp ? chartPointAt(chart, dp.datasetIndex, dp.dataIndex) : null;
+  if (!point) { hideChartTooltip(); return; }
+
+  const key = `${point.albumId}|${point.date}`;
+  chartHoverKey = key;
+  el.innerHTML = chartTooltipHtml(point);
+  el.style.display = "block";
+
+  // A match marker on a cold cache renders "Loading…" and fills itself in. The
+  // key guard is what stops a slow response from redrawing a tooltip the cursor
+  // has already left, or one now describing a different point.
+  if (point.matchId && !matchResultCache[point.matchId]) {
+    const settle = failed => { if (chartHoverKey === key) el.innerHTML = chartTooltipHtml(point, failed); };
+    fetchMatchResult(point.matchId).then(() => settle(false), () => settle(true));
+  }
+
+  // caretX/Y are canvas-relative and #history-canvas-wrap is the positioned
+  // ancestor, so the offsets line the two coordinate spaces up. Both axes are
+  // then kept inside the wrapper: a match tooltip is seven lines tall against a
+  // 260px chart, so left unclamped it covers the date labels below the plot and
+  // runs on past the panel. Horizontally it flips to the other side of the
+  // cursor, which reads better than sliding; vertically it just slides, since
+  // flipping a box this tall lands it under the cursor as often as not.
+  const wrap = el.offsetParent ?? chart.canvas.parentNode;
+  const left = chart.canvas.offsetLeft + tooltip.caretX;
+  const top = chart.canvas.offsetTop + tooltip.caretY + 14;
+  el.style.left = `${left + el.offsetWidth + 14 > wrap.clientWidth ? Math.max(0, left - el.offsetWidth - 14) : left + 14}px`;
+  el.style.top = `${Math.max(0, Math.min(top, wrap.clientHeight - el.offsetHeight))}px`;
 }
 
 /* ── Compare search box ─────────────────────────────────── */
@@ -396,6 +499,20 @@ function renderMatchPane() {
   if (first) toggleMatchRow(first.dataset.matchId, first.querySelector(".match-toggle"), first.querySelector(".match-detail"), { compare: true });
 }
 
+/* Shared by the accordion and the chart tooltip, which can ask for the same
+   match at the same time — and the tooltip asks on every mousemove over a
+   marker, so concurrent requests are deduped rather than merely cached. */
+function fetchMatchResult(matchId) {
+  if (matchResultCache[matchId]) return Promise.resolve(matchResultCache[matchId]);
+  if (!matchFetches[matchId]) {
+    matchFetches[matchId] = fetch(`${API_BASE_URL}/results/${encodeURIComponent(matchId)}`)
+      .then(res => { if (!res.ok) throw new Error(`HTTP ${res.status}`); return res.json(); })
+      .then(data => { matchResultCache[matchId] = data; return data; })
+      .finally(() => { delete matchFetches[matchId]; });
+  }
+  return matchFetches[matchId];
+}
+
 async function toggleMatchRow(matchId, btn, det, opts = {}) {
   const isOpen = btn.classList.contains("open");
   if (isOpen) { btn.classList.remove("open"); det.classList.remove("open"); return; }
@@ -403,9 +520,7 @@ async function toggleMatchRow(matchId, btn, det, opts = {}) {
   if (matchResultCache[matchId]) { renderMatchDetail(matchId, det, opts); return; }
   det.textContent = "Loading…";
   try {
-    const res = await fetch(`${API_BASE_URL}/results/${encodeURIComponent(matchId)}`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    matchResultCache[matchId] = await res.json(); renderMatchDetail(matchId, det, opts);
+    await fetchMatchResult(matchId); renderMatchDetail(matchId, det, opts);
   } catch (e) { det.textContent = `Error: ${e.message}`; }
 }
 

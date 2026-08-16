@@ -201,6 +201,45 @@
     #history-status.error { color: var(--pink); }
     #history-canvas-wrap { position: relative; height: 260px; }
 
+    /* Chart.js draws its own tooltip onto the canvas, which can only hold plain
+       text. This one is a real element (see renderChartTooltip in app.js) so a
+       match's ranking can be marked up. pointer-events: none keeps the pointer
+       on the canvas underneath, so the hover it is describing never flickers. */
+    #chart-tooltip {
+      display: none; position: absolute; pointer-events: none; z-index: 10;
+      background: var(--surface); border: 2px solid var(--ink); border-radius: 8px;
+      box-shadow: 3px 3px 0 var(--pink); padding: 0.45rem 0.7rem;
+      font-size: 0.78rem; max-width: 240px; white-space: nowrap;
+    }
+    #chart-tooltip .tt-date { font-weight: 700; color: var(--violet); }
+    #chart-tooltip .tt-album { display: flex; align-items: center; gap: 0.35rem; font-weight: 600; }
+    #chart-tooltip .tt-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    #chart-tooltip .tt-score { color: var(--ink-soft); font-weight: 500; }
+    /* The ranking is its own panel, so a match tooltip reads as a different
+       thing rather than as the plain one with more lines. The negative margins
+       bleed the fill to the tooltip's inner edges; 6px is the outer 8px radius
+       less the 2px border, so the bottom corners sit flush. */
+    #chart-tooltip .tt-match {
+      background: var(--paper); border-top: 2px solid var(--ink);
+      border-radius: 0 0 6px 6px;
+      margin: 0.45rem -0.7rem -0.45rem; padding: 0.4rem 0.7rem;
+    }
+    #chart-tooltip .tt-match-label {
+      font-size: 0.6rem; font-weight: 700; letter-spacing: 0.08em;
+      text-transform: uppercase; color: var(--ink-soft); margin-bottom: 0.3rem;
+    }
+    #chart-tooltip .tt-rank { display: flex; gap: 0.35rem; }
+    #chart-tooltip .tt-rank-num { font-weight: 700; color: var(--violet); min-width: 1.1em; }
+    /* The hovered album's row punches back out of the shading onto the same
+       surface as the header naming it. The negative margins cancel the chip's
+       own padding and border, keeping the rank numbers in one column. */
+    #chart-tooltip .tt-rank.focal {
+      font-weight: 700;
+      background: var(--surface); border: 2px solid var(--ink); border-radius: 6px;
+      padding: 0.05rem 0.3rem; margin: 0.12rem calc(-0.3rem - 2px);
+    }
+    #chart-tooltip .tt-loading { color: var(--ink-soft); }
+
     #history-panes { display: flex; gap: 1.5rem; align-items: flex-start; }
     #score-pane { flex: 55 0 0%; min-width: 0; }
     #match-pane { flex: 45 0 0%; min-width: 0; }
@@ -352,7 +391,7 @@
           </div>
           <div id="history-chips"></div>
           <p id="history-status"></p>
-          <div id="history-canvas-wrap"><canvas id="history-canvas"></canvas></div>
+          <div id="history-canvas-wrap"><canvas id="history-canvas"></canvas><div id="chart-tooltip"></div></div>
         </div>
         <div id="match-pane">
           <h2>Match History</h2>
