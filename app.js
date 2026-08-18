@@ -349,7 +349,7 @@ function rebuildChart() {
       plugins: { legend: { display: false }, tooltip: { enabled: false, external: renderChartTooltip } },
       scales: {
         x: { ticks: { maxRotation: 45, autoSkip: true, maxTicksLimit: 10, color: '#5A5A72', font: { family: "'Poppins', sans-serif", size: 11 } }, grid: { color: 'rgba(26,26,46,0.07)' }, border: { color: 'rgba(26,26,46,0.15)' } },
-        yScore: { type: "linear", position: "left", min: -1.5, max: 1.5, title: { display: true, text: "Score", color: '#5A5A72', font: { family: "'Poppins', sans-serif", size: 11 } }, ticks: { color: '#5A5A72', font: { family: "'Poppins', sans-serif", size: 11 } }, grid: { color: 'rgba(26,26,46,0.07)' }, border: { color: 'rgba(26,26,46,0.15)' } },
+        yScore: { type: "linear", position: "left", min: -2.0, max: 2.0, title: { display: true, text: "Score", color: '#5A5A72', font: { family: "'Poppins', sans-serif", size: 11 } }, ticks: { color: '#5A5A72', font: { family: "'Poppins', sans-serif", size: 11 } }, grid: { color: 'rgba(26,26,46,0.07)' }, border: { color: 'rgba(26,26,46,0.15)' } },
       },
     },
   });
