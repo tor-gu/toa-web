@@ -300,14 +300,62 @@ th.sort-active .sort-indicator { color: var(--pink); }
   overflow: hidden; overflow-x: auto;
 }
 #match-table-wrap .ranking-delta { display: inline-block; }
+/* The shared th rule is position:sticky/top:0, which would stack the two header
+   rows on top of each other. This wrapper only ever scrolls horizontally, so
+   nothing is lost by opting out. */
+#match-table-wrap thead th { position: static; }
+/* The 3px pink rule belongs under the labels, not under the group row. */
+#match-table-wrap .grp-row th { border-bottom: none; padding-bottom: 0.25rem; }
+#match-table-wrap .grp {
+  text-align: center;
+  font-size: 0.62rem;
+  color: var(--ink-soft);
+  letter-spacing: 0.1em;
+}
+/* Divides then from now, down the whole table. */
+#match-table-wrap .grp-start { border-left: 2px solid var(--line); }
+#match-table-wrap .lbl-short { display: none; }
+
+/* ── Match view: score history chart ────────────────────── */
+#match-chart-panel {
+  --panel-accent: var(--cyan);
+  padding: 1rem 1.25rem 1.25rem;
+  margin-top: 1.25rem;
+}
+#match-chart-panel h2 {
+  margin: 0 0 0.6rem;
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.74rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--violet);
+}
+#match-chart-status { color: var(--ink-soft); font-size: 0.85rem; margin: 0; font-weight: 500; }
+#match-chart-status.error { color: var(--pink); }
+/* Same height as the album view's chart, so the two read as one component. */
+#match-chart-wrap { position: relative; height: 260px; }
 
 @media (max-width: 600px) {
   #history-panes { flex-direction: column; }
   #score-pane, #match-pane { flex: none; width: 100%; }
-  /* Claw back width so Score/Change stay near the fold — the wrap still
-     scrolls, but the interesting columns shouldn't need discovering. */
-  #match-panel { padding: 0.8rem 0.7rem 0.9rem; }
-  #match-table-wrap th, #match-table-wrap td { padding-left: 0.5rem; padding-right: 0.5rem; }
+  /* Four numeric columns don't fit beside both name columns. The album name
+     identifies the row on its own and is already the link to the album page, so
+     the artist is what gives — that plus tighter cells keeps Today on screen
+     instead of behind a horizontal scroll nobody discovers. */
+  #match-panel, #match-chart-panel { padding: 0.8rem 0.7rem 0.9rem; }
+  #match-table-wrap .col-artist { display: none; }
+  #match-table-wrap th, #match-table-wrap td { padding: 0.4rem 0.25rem; }
+  /* Headers, not values, are what set the minimum width of every numeric column
+     here — "SCORE" is wider than "-1.021" — so they shrink hardest, and
+     "Change" gives way to the symbol entirely. */
+  #match-table-wrap th { font-size: 0.58rem; letter-spacing: 0.03em; }
+  #match-table-wrap .lbl-long { display: none; }
+  #match-table-wrap .lbl-short { display: inline; }
+  #match-table-wrap .grp { font-size: 0.55rem; }
+  #match-table-wrap td { font-size: 0.78rem; }
+  #match-table-wrap .score { font-size: 0.75rem; }
+  #match-table-wrap .ranking-delta { font-size: 0.63rem; padding: 0.05rem 0.2rem; }
+  #match-table-wrap .rank { width: auto; }
+  #match-table-wrap .rank span { min-width: 1.35rem; height: 1.35rem; padding: 0 0.2rem; font-size: 0.62rem; }
 }
 @media (max-width: 880px) {
   .page-layout { flex-direction: column; }

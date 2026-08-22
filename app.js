@@ -16,6 +16,14 @@ function rankColor(rank) {
   if (rank == null) return "var(--ink-soft)";
   return RANK_COLORS[Math.floor(rank - 1) % RANK_COLORS.length];
 }
+/* The match view's own badge colour, returning the same entry its chart line
+   uses so the two can never drift apart — which is what lets the table stand in
+   for the chart's legend. It is a 6-cycle rather than rankColor's 4 because
+   matches are 4-5 albums, so within one match no colour repeats. The landing
+   table keeps rankColor: 100+ rows make any cycle decoration, not identity. */
+function matchRankColor(rank) {
+  return COLORS[(Math.max(1, Math.floor(rank || 1)) - 1) % COLORS.length];
+}
 const API_BASE_URL = window.TOA_API_BASE_URL;
 const BASE_TITLE = "Tournament of Albums";
 const pageTitle = (subtitle) => (subtitle ? `${BASE_TITLE} — ${subtitle}` : BASE_TITLE);
@@ -34,6 +42,12 @@ const COLORS = [
 // promises: the chart tooltip re-fires on every mousemove over one match marker,
 // so without it a slow hover would open a request per frame.
 let allScores = [], scoresById = {}, albumDataCache = {}, albumNames = {}, matchResultCache = {}, matchFetches = {};
+// Whole /score-history/{id} bodies ({album, history}), shared by the album chart
+// and the match view — hopping from a match to one of its albums reuses the
+// fetch. Deliberately separate from albumDataCache, whose entries are expected
+// to carry matchByDate/matchList too; a half-populated one there would make
+// renderMatchPane report "No matches on record." for an album that has them.
+let scoreHistoryCache = {}, historyFetches = {};
 // Landing view state
 let currentFilter = "", currentSort = { col: null, dir: "asc" };
 // Album view state — reset when the focal album changes
@@ -256,13 +270,10 @@ async function addAlbum(albumId, artist, albumName, shortName) {
   if (!albumDataCache[albumId]) {
     pendingFetches++; status.textContent = "Loading…"; status.className = ""; wrap.style.display = "none";
     try {
-      const [histRes, matchRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/score-history/${encodeURIComponent(albumId)}`),
+      const [data, matchRes] = await Promise.all([
+        fetchScoreHistory(albumId),
         fetch(`${API_BASE_URL}/match-history/${encodeURIComponent(albumId)}`),
       ]);
-      if (histRes.status === 404) throw new Error("No history found for this album.");
-      if (!histRes.ok) throw new Error(`HTTP ${histRes.status}`);
-      const data = await histRes.json();
       const matchList = matchRes.ok ? (await matchRes.json()).matches : [];
       // Keyed by date rather than listing matches, because the chart addresses
       // points by date. The value is the match id so the tooltip can reach the
@@ -291,6 +302,27 @@ function removeAlbum(albumId) {
   if (albumId === focalAlbumId) return;
   activeAlbumIds.delete(albumId); releaseColor(albumId);
   renderChips(); rebuildChart();
+}
+
+/* Shared by the album chart and the match chart so the two can't drift apart
+   visually. Fresh objects each call rather than one frozen constant: Chart.js
+   merges its defaults into the config it is handed, and two live charts must not
+   be sharing the objects it writes into.
+
+   The y range is fixed rather than fitted to the data on purpose — a chart that
+   rescales to its contents makes a 0.02 wobble and a 0.9 collapse look the same
+   size, which is exactly the comparison these charts exist to support. */
+function chartScaleOptions() {
+  const label = () => ({ color: '#5A5A72', font: { family: "'Poppins', sans-serif", size: 11 } });
+  const rules = () => ({ grid: { color: 'rgba(26,26,46,0.07)' }, border: { color: 'rgba(26,26,46,0.15)' } });
+  return {
+    x: { ticks: { maxRotation: 45, autoSkip: true, maxTicksLimit: 10, ...label() }, ...rules() },
+    yScore: {
+      type: "linear", position: "left", min: -2.0, max: 2.0,
+      title: { display: true, text: "Score", ...label() },
+      ticks: label(), ...rules(),
+    },
+  };
 }
 
 function rebuildChart() {
@@ -347,10 +379,7 @@ function rebuildChart() {
         if (chart.canvas.style.cursor !== want) chart.canvas.style.cursor = want;
       },
       plugins: { legend: { display: false }, tooltip: { enabled: false, external: renderChartTooltip } },
-      scales: {
-        x: { ticks: { maxRotation: 45, autoSkip: true, maxTicksLimit: 10, color: '#5A5A72', font: { family: "'Poppins', sans-serif", size: 11 } }, grid: { color: 'rgba(26,26,46,0.07)' }, border: { color: 'rgba(26,26,46,0.15)' } },
-        yScore: { type: "linear", position: "left", min: -2.0, max: 2.0, title: { display: true, text: "Score", color: '#5A5A72', font: { family: "'Poppins', sans-serif", size: 11 } }, ticks: { color: '#5A5A72', font: { family: "'Poppins', sans-serif", size: 11 } }, grid: { color: 'rgba(26,26,46,0.07)' }, border: { color: 'rgba(26,26,46,0.15)' } },
-      },
+      scales: chartScaleOptions(),
     },
   });
 }
@@ -546,6 +575,35 @@ function fetchMatchResult(matchId) {
   return matchFetches[matchId];
 }
 
+/* Same dedupe as fetchMatchResult, and for the same reason in a different
+   shape: the match view asks for every album in the ranking at once, and a
+   reader bouncing between a match and its albums would otherwise reopen a
+   request the first view has in flight. */
+function fetchScoreHistory(albumId) {
+  if (scoreHistoryCache[albumId]) return Promise.resolve(scoreHistoryCache[albumId]);
+  if (!historyFetches[albumId]) {
+    historyFetches[albumId] = fetch(`${API_BASE_URL}/score-history/${encodeURIComponent(albumId)}`)
+      .then(res => {
+        if (res.status === 404) throw new Error("No history found for this album.");
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then(data => { scoreHistoryCache[albumId] = data; return data; })
+      .finally(() => { delete historyFetches[albumId]; });
+  }
+  return historyFetches[albumId];
+}
+
+/* The album's most recent scored date — the right-hand end of its line on the
+   chart. This is what the match view calls "today", rather than /scores: the
+   match view is dispatched before load() and is never re-dispatched, so a
+   column sourced from that payload renders empty on a deep link and stays
+   empty. That is what removed the previous "Now" column. */
+function currentScoreOf(albumId) {
+  const h = scoreHistoryCache[albumId]?.history;
+  return h && h.length ? h[h.length - 1].score : null;
+}
+
 async function toggleMatchRow(matchId, btn, det, opts = {}) {
   const isOpen = btn.classList.contains("open");
   if (isOpen) { btn.classList.remove("open"); det.classList.remove("open"); return; }
@@ -557,19 +615,28 @@ async function toggleMatchRow(matchId, btn, det, opts = {}) {
   } catch (e) { det.textContent = `Error: ${e.message}`; }
 }
 
-function formatDelta(item) {
-  if (item.is_new) return "New";
-  if (item.score_delta == null) return "–";
-  if (item.score_delta === 0) return "0.000";
-  const icon = item.score_delta > 0 ? "▲" : "▼";
-  return `${icon} ${Math.abs(item.score_delta).toFixed(3)}`;
+/* Taken by value as well as by ranking item: the match view's "since this
+   match" delta is computed client-side and has no item to read is_new off — and
+   must never say "New", since an album's drift since a match it played in is
+   not a debut. The item wrappers keep the accordions and the chart tooltip
+   calling exactly what they always did. */
+function formatDeltaValue(delta, isNew = false) {
+  if (isNew) return "New";
+  if (delta == null) return "–";
+  if (delta === 0) return "0.000";
+  const icon = delta > 0 ? "▲" : "▼";
+  return `${icon} ${Math.abs(delta).toFixed(3)}`;
 }
 
-function deltaClass(item) {
-  if (item.is_new) return "new";
-  if (item.score_delta == null) return "flat";
-  return item.score_delta > 0 ? "up" : item.score_delta < 0 ? "down" : "flat";
+function deltaClassValue(delta, isNew = false) {
+  if (isNew) return "new";
+  if (delta == null) return "flat";
+  return delta > 0 ? "up" : delta < 0 ? "down" : "flat";
 }
+
+function formatDelta(item) { return formatDeltaValue(item.score_delta, item.is_new); }
+
+function deltaClass(item) { return deltaClassValue(item.score_delta, item.is_new); }
 
 function renderMatchDetail(matchId, det, opts = {}) {
   det.innerHTML = (matchResultCache[matchId]?.ranking || []).map(item => `
@@ -592,7 +659,11 @@ function renderMatchDetail(matchId, det, opts = {}) {
 /* The whole page hangs off one fetch, so a fast back/forward could otherwise
    let a slow response repaint a match the user has already navigated away
    from. Every DOM write below is gated on this still matching. */
-let currentMatchId = null;
+let currentMatchId = null, matchChart = null;
+/* The payload the two renderers below read. renderMatchTable is called twice —
+   once when /results lands and again when the score histories do — so the
+   ranking has to outlive the call that delivered it. */
+let matchView = null;
 
 async function showMatchView(matchId) {
   showView("view-match");
@@ -605,6 +676,9 @@ async function showMatchView(matchId) {
   document.getElementById("match-subtitle").textContent = "";
   document.title = pageTitle("Match Results");
   document.getElementById("match-table-wrap").innerHTML = "";
+  /* Hidden rather than emptied: an empty .panel still draws its border and hard
+     shadow, so a "Match not found" page would carry a bare cyan box under it. */
+  document.getElementById("match-chart-panel").style.display = "none";
   statusEl.textContent = "Loading…"; statusEl.className = "";
   try {
     const res = await fetch(`${API_BASE_URL}/results/${encodeURIComponent(matchId)}`);
@@ -634,20 +708,174 @@ function renderMatchView({ date, ranking }) {
   document.title = pageTitle(`Match ${date}`);
   document.getElementById("match-view-status").textContent = "";
   document.getElementById("match-view-status").className = "";
+  document.getElementById("match-chart-panel").style.display = "block";
+  matchView = { date, ranking };
+  /* Started first so the fetches are registered in historyFetches before the
+     table reads them — that is what tells "still loading" apart from "we asked
+     and there is nothing". The re-render happens in a promise callback, so it
+     cannot beat the synchronous first paint below. */
+  loadMatchHistories();
+  renderMatchTable();
+}
+
+/* Written in one pass with the rest of the row even though its data arrives
+   later: "…" while that album's /score-history is in flight, "–" once it has
+   failed or come back empty. */
+function matchRowCells(item) {
+  const pending = !scoreHistoryCache[item.id] && !!historyFetches[item.id];
+  const current = currentScoreOf(item.id);
+  /* Rounded before formatting, not after: float subtraction of two equal scores
+     leaves ~1e-16, which formatDeltaValue would dress up as "▲ 0.000". */
+  const drift = current == null || item.new_score == null
+    ? null : Math.round((current - item.new_score) * 1000) / 1000;
+  const todayScore = pending ? "…" : formatScore(current);
+  const todayDelta = pending
+    ? `<span class="ranking-delta flat">…</span>`
+    : `<span class="ranking-delta ${deltaClassValue(drift)}">${formatDeltaValue(drift)}</span>`;
+  return `
+        <tr data-album-id="${esc(item.id)}">
+          <td class="rank col-rank"><span style="background:${matchRankColor(item.rank).border}">${item.rank}</span></td>
+          <td class="col-artist">${esc(item.artist)}</td>
+          <td class="col-album"><a class="album-link" href="${albumHref(item.id)}">${esc(item.album)}</a></td>
+          <td class="score grp-start">${formatScore(item.new_score)}</td>
+          <td><span class="ranking-delta ${deltaClass(item)}">${formatDelta(item)}</span></td>
+          <td class="score grp-start">${todayScore}</td>
+          <td>${todayDelta}</td>
+        </tr>`;
+}
+
+/* Two header rows. The first three cells of the group row are separate empty
+   <th>s rather than one colspan="3": the artist column is display:none under
+   600px, and a cell hidden in one row but spanned in the other would leave the
+   two rows a column out of step. */
+function renderMatchTable() {
+  const { ranking } = matchView;
   document.getElementById("match-table-wrap").innerHTML = `
     <table>
-      <thead><tr>
-        <th>Rank</th><th>Artist</th><th>Album</th><th>Score</th><th>Change</th>
-      </tr></thead>
-      <tbody>${ranking.map(item => `
+      <thead>
+        <tr class="grp-row">
+          <th class="col-rank"></th><th class="col-artist"></th><th class="col-album"></th>
+          <th class="grp grp-start" colspan="2" title="Score and change as of this match's date">At This Match</th>
+          <th class="grp grp-start" colspan="2" title="Current score, and change since this match">Today</th>
+        </tr>
         <tr>
-          <td class="rank"><span style="background:${rankColor(item.rank)}">${item.rank}</span></td>
-          <td>${esc(item.artist)}</td>
-          <td><a class="album-link" href="${albumHref(item.id)}">${esc(item.album)}</a></td>
-          <td class="score">${formatScore(item.new_score)}</td>
-          <td><span class="ranking-delta ${deltaClass(item)}">${formatDelta(item)}</span></td>
-        </tr>`).join("")}</tbody>
+          <th class="col-rank">Rank</th><th class="col-artist">Artist</th><th class="col-album">Album</th>
+          <th class="grp-start">Score</th><th><span class="lbl-long">Change</span><span class="lbl-short">&#916;</span></th>
+          <th class="grp-start">Score</th><th><span class="lbl-long">Change</span><span class="lbl-short">&#916;</span></th>
+        </tr>
+      </thead>
+      <tbody>${ranking.map(matchRowCells).join("")}</tbody>
     </table>`;
+}
+
+/* One /score-history per album, feeding both the Today columns and the chart.
+   Failures are counted rather than thrown: one album with no history should
+   cost that album its two cells and its line, not the whole page. */
+function loadMatchHistories() {
+  const token = currentMatchId, { ranking } = matchView;
+  const status = document.getElementById("match-chart-status");
+  const wrap = document.getElementById("match-chart-wrap");
+  if (matchChart) { matchChart.destroy(); matchChart = null; }
+  if (ranking.length === 0) { status.textContent = ""; wrap.style.display = "none"; return; }
+  status.textContent = "Loading…"; status.className = "";
+  wrap.style.display = "none";
+  let failed = 0;
+  Promise.all(ranking.map(item => fetchScoreHistory(item.id).catch(() => { failed++; })))
+    .then(() => {
+      // Same guard as every other write here: a fast back/forward must not let
+      // a slow response repaint a match the reader has already left.
+      if (currentMatchId !== token) return;
+      renderMatchTable();
+      renderMatchChart(failed);
+    });
+}
+
+/* The one date this page is about. An inline plugin rather than
+   chartjs-plugin-annotation — a single dashed rule does not earn a second
+   <script> on a page with no build step and no fingerprinting. */
+function matchDateRule(index) {
+  return {
+    id: "matchDateRule",
+    afterDatasetsDraw(chart) {
+      if (index < 0) return;
+      const x = chart.scales.x.getPixelForValue(index);
+      const { top, bottom } = chart.chartArea;
+      const ctx = chart.ctx;
+      ctx.save();
+      ctx.setLineDash([4, 4]); ctx.lineWidth = 2; ctx.strokeStyle = "#5A5A72";
+      ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, bottom); ctx.stroke();
+      ctx.restore();
+    },
+  };
+}
+
+function renderMatchChart(failed) {
+  const { date, ranking } = matchView;
+  const status = document.getElementById("match-chart-status");
+  const wrap = document.getElementById("match-chart-wrap");
+  const charted = ranking.filter(item => scoreHistoryCache[item.id]?.history?.length);
+  if (charted.length === 0) {
+    status.textContent = "Score history unavailable."; status.className = "error";
+    wrap.style.display = "none";
+    return;
+  }
+  status.textContent = failed
+    ? `Score history unavailable for ${failed} album${failed === 1 ? "" : "s"}.` : "";
+  status.className = "";
+  wrap.style.display = "block";
+
+  const dates = [...new Set(charted.flatMap(item =>
+    scoreHistoryCache[item.id].history.map(h => h.date)))].sort();
+  /* Only this match's date carries a marker. An album's other matches would
+     need a /match-history each — twice the requests — and would put clickable
+     points for other matches on a page that is about this one. */
+  const matchIdx = dates.indexOf(date);
+  const datasets = charted.map(item => {
+    const color = matchRankColor(item.rank);
+    const scoreByDate = Object.fromEntries(
+      scoreHistoryCache[item.id].history.map(h => [h.date, h.score]));
+    return {
+      label: item["short-name"] || item.album,
+      data: dates.map(d => scoreByDate[d] ?? null),
+      borderColor: color.border, backgroundColor: color.bg,
+      tension: 0.2, spanGaps: true,
+      pointBackgroundColor: color.border,
+      pointStyle: ctx => ctx.dataIndex === matchIdx ? "rectRot" : "circle",
+      pointRadius: ctx => ctx.dataIndex === matchIdx ? 6 : 0,
+      pointHoverRadius: ctx => ctx.dataIndex === matchIdx ? 8 : 4,
+      // Keeps the radius-0 points hoverable at all: PointElement.inRange tests
+      // hitRadius + radius. Same 8px the album chart uses.
+      pointHitRadius: 8, yAxisID: "yScore",
+    };
+  });
+
+  matchChart = new Chart(document.getElementById("match-chart-canvas"), {
+    type: "line",
+    data: { labels: dates, datasets },
+    plugins: [matchDateRule(matchIdx)],
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: "nearest", intersect: true },
+      plugins: {
+        legend: { display: false },
+        /* Chart.js's own tooltip, not the album view's external one. That one
+           exists to show a hovered match's ranking in markup — which on this
+           page is the table directly above — and is wired to albumDataCache,
+           albumColorMap and albumNames. Reusing it would mean writing album-view
+           state from the match view, which is exactly what the separate
+           scoreHistoryCache avoids. Naming the line is all this needs. */
+        tooltip: {
+          backgroundColor: "#FFFFFF", borderColor: "#1A1A2E", borderWidth: 2,
+          titleColor: "#7C3AED", bodyColor: "#1A1A2E",
+          padding: 8, cornerRadius: 8,
+          titleFont: { family: "'Poppins', sans-serif", size: 12, weight: 700 },
+          bodyFont: { family: "'Poppins', sans-serif", size: 12 },
+          callbacks: { label: ctx => ` ${ctx.dataset.label}: ${formatScore(ctx.parsed.y)}` },
+        },
+      },
+      scales: chartScaleOptions(),
+    },
+  });
 }
 
 /* ── Landing: recent matches ────────────────────────────── */

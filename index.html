@@ -82,6 +82,14 @@
       <p id="match-view-status"></p>
       <div id="match-table-wrap"></div>
     </div>
+    <!-- Hidden until there is a ranking to chart: an empty .panel still draws
+         its border and shadow. Chart.js is already loaded above for the album
+         view, so this costs no new script. -->
+    <div id="match-chart-panel" class="panel" style="display:none">
+      <h2>Score History</h2>
+      <p id="match-chart-status"></p>
+      <div id="match-chart-wrap"><canvas id="match-chart-canvas"></canvas></div>
+    </div>
   </div>
 
   <script src="/app.js"></script>
