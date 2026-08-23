@@ -315,6 +315,22 @@ th.sort-active .sort-indicator { color: var(--pink); }
 /* Divides then from now, down the whole table. */
 #match-table-wrap .grp-start { border-left: 2px solid var(--line); }
 #match-table-wrap .lbl-short { display: none; }
+/* Second line of every numeric cell: the album's standing, under its score. The
+   score is the headline; the standing is the same fact on another scale, so it
+   is set smaller and softer rather than given a column of its own. Stacking is
+   what keeps four numeric columns instead of eight — "#263.5" is no wider than
+   "-0.030", so no column minimum grows. */
+#match-table-wrap .cell-sub {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.72rem;
+  color: var(--ink-soft);
+}
+#match-table-wrap .cell-sub .ranking-delta { font-size: 0.6rem; }
+/* Two lines of unequal weight per cell, so align the score lines across the row
+   rather than the block centres — otherwise a cell whose second line is "–"
+   sits half a line off from its neighbours. */
+#match-table-wrap tbody td { vertical-align: top; }
 
 /* ── Match view: score history chart ────────────────────── */
 #match-chart-panel {
@@ -354,6 +370,8 @@ th.sort-active .sort-indicator { color: var(--pink); }
   #match-table-wrap td { font-size: 0.78rem; }
   #match-table-wrap .score { font-size: 0.75rem; }
   #match-table-wrap .ranking-delta { font-size: 0.63rem; padding: 0.05rem 0.2rem; }
+  #match-table-wrap .cell-sub { font-size: 0.65rem; margin-top: 0.15rem; }
+  #match-table-wrap .cell-sub .ranking-delta { font-size: 0.56rem; }
   #match-table-wrap .rank { width: auto; }
   #match-table-wrap .rank span { min-width: 1.35rem; height: 1.35rem; padding: 0 0.2rem; font-size: 0.62rem; }
 }

@@ -628,6 +628,38 @@ function formatDelta(item) { return formatDeltaValue(item.score_delta, item.is_n
 
 function deltaClass(item) { return deltaClassValue(item.score_delta, item.is_new); }
 
+/* An album's standing among every scored album, as opposed to its position
+   within a match. Ranks are whole or .5 — a tie group shares the average of the
+   positions it spans, which lands on a half only when the group is even-sized.
+   The "#" is what tells the eye this is a standing and not a second score, in a
+   cell where it sits directly under one. */
+function formatRank(rank) {
+  if (rank == null) return "–";
+  return `#${Number.isInteger(rank) ? rank : rank.toFixed(1)}`;
+}
+
+/* formatDeltaValue's shape, not its precision: a rank moves in places, not
+   thousandths, so toFixed(3) would render "▲ 205.000". Never says "New" — the
+   score delta stacked above it already did, and repeating it is noise. */
+function formatRankDelta(delta) {
+  if (delta == null) return "–";
+  if (delta === 0) return "0";
+  const mag = Math.abs(delta);
+  return `${delta > 0 ? "▲" : "▼"} ${Number.isInteger(mag) ? mag : mag.toFixed(1)}`;
+}
+
+/* One numeric cell: the score-scale value, with its rank-scale counterpart on a
+   second line. Stacking rather than adding four columns is what keeps the table
+   inside 375px — "#263.5" is the same width as "-0.030", so no column's minimum
+   grows; only the row does. */
+function scoreOverRank(score, rank) {
+  return `${formatScore(score)}<span class="cell-sub">${formatRank(rank)}</span>`;
+}
+
+function deltaOverRankDelta(scoreCell, rankDelta) {
+  return `${scoreCell}<span class="cell-sub"><span class="ranking-delta ${deltaClassValue(rankDelta)}">${formatRankDelta(rankDelta)}</span></span>`;
+}
+
 function renderMatchDetail(matchId, det, opts = {}) {
   det.innerHTML = (matchResultCache[matchId]?.ranking || []).map(item => `
     <div class="ranking-item${opts.compare && item.id === focalAlbumId ? " focal" : ""}">
@@ -707,17 +739,22 @@ function renderMatchView({ date, ranking }) {
 /* Both pairs come straight off the /results body: the API resolves each album's
    current standing against the latest scored date and hands back the drift
    already computed. It subtracts in Decimal, so an album that has not moved
-   gives exactly 0.0 — no float dust for the formatter to dress up as "▲ 0.000". */
+   gives exactly 0.0 — no float dust for the formatter to dress up as "▲ 0.000".
+
+   Every numeric cell carries two lines, score over standing. The first column's
+   badge is the album's position *within this match*; the "#" values are its
+   standing among all scored albums. Two different ranks, hence "Pos" on that
+   header. */
 function matchRowCells(item) {
   return `
         <tr data-album-id="${esc(item.id)}">
           <td class="rank col-rank"><span style="background:${matchRankColor(item.rank).border}">${item.rank}</span></td>
           <td class="col-artist">${esc(item.artist)}</td>
           <td class="col-album"><a class="album-link" href="${albumHref(item.id)}">${esc(item.album)}</a></td>
-          <td class="score grp-start">${formatScore(item.new_score)}</td>
-          <td><span class="ranking-delta ${deltaClass(item)}">${formatDelta(item)}</span></td>
-          <td class="score grp-start">${formatScore(item.current_score)}</td>
-          <td><span class="ranking-delta ${deltaClassValue(item.current_score_delta)}">${formatDeltaValue(item.current_score_delta)}</span></td>
+          <td class="score grp-start">${scoreOverRank(item.new_score, item.new_rank)}</td>
+          <td>${deltaOverRankDelta(`<span class="ranking-delta ${deltaClass(item)}">${formatDelta(item)}</span>`, item.rank_delta)}</td>
+          <td class="score grp-start">${scoreOverRank(item.current_score, item.current_rank)}</td>
+          <td>${deltaOverRankDelta(`<span class="ranking-delta ${deltaClassValue(item.current_score_delta)}">${formatDeltaValue(item.current_score_delta)}</span>`, item.current_rank_delta)}</td>
         </tr>`;
 }
 
@@ -731,11 +768,11 @@ function renderMatchTable(ranking) {
       <thead>
         <tr class="grp-row">
           <th class="col-rank"></th><th class="col-artist"></th><th class="col-album"></th>
-          <th class="grp grp-start" colspan="2" title="Score and change as of this match's date">At This Match</th>
-          <th class="grp grp-start" colspan="2" title="Current score, and change since this match">Today</th>
+          <th class="grp grp-start" colspan="2" title="Score, standing, and both changes as of this match's date">At This Match</th>
+          <th class="grp grp-start" colspan="2" title="Current score, standing, and both changes since this match">Today</th>
         </tr>
         <tr>
-          <th class="col-rank">Rank</th><th class="col-artist">Artist</th><th class="col-album">Album</th>
+          <th class="col-rank" title="Position within this match">Pos</th><th class="col-artist">Artist</th><th class="col-album">Album</th>
           <th class="grp-start">Score</th><th><span class="lbl-long">Change</span><span class="lbl-short">&#916;</span></th>
           <th class="grp-start">Score</th><th><span class="lbl-long">Change</span><span class="lbl-short">&#916;</span></th>
         </tr>
