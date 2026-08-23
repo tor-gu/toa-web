@@ -594,16 +594,6 @@ function fetchScoreHistory(albumId) {
   return historyFetches[albumId];
 }
 
-/* The album's most recent scored date — the right-hand end of its line on the
-   chart. This is what the match view calls "today", rather than /scores: the
-   match view is dispatched before load() and is never re-dispatched, so a
-   column sourced from that payload renders empty on a deep link and stays
-   empty. That is what removed the previous "Now" column. */
-function currentScoreOf(albumId) {
-  const h = scoreHistoryCache[albumId]?.history;
-  return h && h.length ? h[h.length - 1].score : null;
-}
-
 async function toggleMatchRow(matchId, btn, det, opts = {}) {
   const isOpen = btn.classList.contains("open");
   if (isOpen) { btn.classList.remove("open"); det.classList.remove("open"); return; }
@@ -616,10 +606,10 @@ async function toggleMatchRow(matchId, btn, det, opts = {}) {
 }
 
 /* Taken by value as well as by ranking item: the match view's "since this
-   match" delta is computed client-side and has no item to read is_new off — and
-   must never say "New", since an album's drift since a match it played in is
-   not a debut. The item wrappers keep the accordions and the chart tooltip
-   calling exactly what they always did. */
+   match" delta lives on a different field from the one the item wrappers read,
+   and must never say "New" — an album's drift since a match it played in is not
+   a debut, even when that match was its debut. The item wrappers keep the
+   accordions and the chart tooltip calling exactly what they always did. */
 function formatDeltaValue(delta, isNew = false) {
   if (isNew) return "New";
   if (delta == null) return "–";
@@ -660,9 +650,9 @@ function renderMatchDetail(matchId, det, opts = {}) {
    let a slow response repaint a match the user has already navigated away
    from. Every DOM write below is gated on this still matching. */
 let currentMatchId = null, matchChart = null;
-/* The payload the two renderers below read. renderMatchTable is called twice —
-   once when /results lands and again when the score histories do — so the
-   ranking has to outlive the call that delivered it. */
+/* Read by renderMatchChart, which runs in a promise callback once the score
+   histories land, so the match has to outlive the call that delivered it. The
+   table needs no such thing — it renders once, straight from the /results body. */
 let matchView = null;
 
 async function showMatchView(matchId) {
@@ -710,28 +700,15 @@ function renderMatchView({ date, ranking }) {
   document.getElementById("match-view-status").className = "";
   document.getElementById("match-chart-panel").style.display = "block";
   matchView = { date, ranking };
-  /* Started first so the fetches are registered in historyFetches before the
-     table reads them — that is what tells "still loading" apart from "we asked
-     and there is nothing". The re-render happens in a promise callback, so it
-     cannot beat the synchronous first paint below. */
-  loadMatchHistories();
-  renderMatchTable();
+  renderMatchTable(ranking);
+  loadMatchChart();
 }
 
-/* Written in one pass with the rest of the row even though its data arrives
-   later: "…" while that album's /score-history is in flight, "–" once it has
-   failed or come back empty. */
+/* Both pairs come straight off the /results body: the API resolves each album's
+   current standing against the latest scored date and hands back the drift
+   already computed. It subtracts in Decimal, so an album that has not moved
+   gives exactly 0.0 — no float dust for the formatter to dress up as "▲ 0.000". */
 function matchRowCells(item) {
-  const pending = !scoreHistoryCache[item.id] && !!historyFetches[item.id];
-  const current = currentScoreOf(item.id);
-  /* Rounded before formatting, not after: float subtraction of two equal scores
-     leaves ~1e-16, which formatDeltaValue would dress up as "▲ 0.000". */
-  const drift = current == null || item.new_score == null
-    ? null : Math.round((current - item.new_score) * 1000) / 1000;
-  const todayScore = pending ? "…" : formatScore(current);
-  const todayDelta = pending
-    ? `<span class="ranking-delta flat">…</span>`
-    : `<span class="ranking-delta ${deltaClassValue(drift)}">${formatDeltaValue(drift)}</span>`;
   return `
         <tr data-album-id="${esc(item.id)}">
           <td class="rank col-rank"><span style="background:${matchRankColor(item.rank).border}">${item.rank}</span></td>
@@ -739,8 +716,8 @@ function matchRowCells(item) {
           <td class="col-album"><a class="album-link" href="${albumHref(item.id)}">${esc(item.album)}</a></td>
           <td class="score grp-start">${formatScore(item.new_score)}</td>
           <td><span class="ranking-delta ${deltaClass(item)}">${formatDelta(item)}</span></td>
-          <td class="score grp-start">${todayScore}</td>
-          <td>${todayDelta}</td>
+          <td class="score grp-start">${formatScore(item.current_score)}</td>
+          <td><span class="ranking-delta ${deltaClassValue(item.current_score_delta)}">${formatDeltaValue(item.current_score_delta)}</span></td>
         </tr>`;
 }
 
@@ -748,8 +725,7 @@ function matchRowCells(item) {
    <th>s rather than one colspan="3": the artist column is display:none under
    600px, and a cell hidden in one row but spanned in the other would leave the
    two rows a column out of step. */
-function renderMatchTable() {
-  const { ranking } = matchView;
+function renderMatchTable(ranking) {
   document.getElementById("match-table-wrap").innerHTML = `
     <table>
       <thead>
@@ -768,10 +744,10 @@ function renderMatchTable() {
     </table>`;
 }
 
-/* One /score-history per album, feeding both the Today columns and the chart.
-   Failures are counted rather than thrown: one album with no history should
-   cost that album its two cells and its line, not the whole page. */
-function loadMatchHistories() {
+/* One /score-history per album, feeding the chart. Failures are counted rather
+   than thrown: one album with no history should cost that album its line, not
+   the whole page. */
+function loadMatchChart() {
   const token = currentMatchId, { ranking } = matchView;
   const status = document.getElementById("match-chart-status");
   const wrap = document.getElementById("match-chart-wrap");
@@ -785,7 +761,6 @@ function loadMatchHistories() {
       // Same guard as every other write here: a fast back/forward must not let
       // a slow response repaint a match the reader has already left.
       if (currentMatchId !== token) return;
-      renderMatchTable();
       renderMatchChart(failed);
     });
 }
