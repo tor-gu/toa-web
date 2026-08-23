@@ -48,6 +48,11 @@ let allScores = [], scoresById = {}, albumDataCache = {}, albumNames = {}, match
 // to carry matchByDate/matchList too; a half-populated one there would make
 // renderMatchPane report "No matches on record." for an album that has them.
 let scoreHistoryCache = {}, historyFetches = {};
+// Per album: { matches, byDate }. Shared by both charts — the album view folds
+// it into albumDataCache, the match view reads byDate directly. Kept out of
+// albumDataCache so the match view never half-populates that; see the note
+// above it.
+let matchHistoryCache = {}, matchHistoryFetches = {};
 // Landing view state
 let currentFilter = "", currentSort = { col: null, dir: "asc" };
 // Album view state — reset when the focal album changes
@@ -270,15 +275,11 @@ async function addAlbum(albumId, artist, albumName, shortName) {
   if (!albumDataCache[albumId]) {
     pendingFetches++; status.textContent = "Loading…"; status.className = ""; wrap.style.display = "none";
     try {
-      const [data, matchRes] = await Promise.all([
+      const [data, history] = await Promise.all([
         fetchScoreHistory(albumId),
-        fetch(`${API_BASE_URL}/match-history/${encodeURIComponent(albumId)}`),
+        fetchMatchHistory(albumId),
       ]);
-      const matchList = matchRes.ok ? (await matchRes.json()).matches : [];
-      // Keyed by date rather than listing matches, because the chart addresses
-      // points by date. The value is the match id so the tooltip can reach the
-      // ranking; every read of it is a truthiness test, which an id satisfies.
-      const matchByDate = {}; for (const m of matchList) matchByDate[m.date] = m.match_id;
+      const { matches: matchList, byDate: matchByDate } = history;
       const resolvedShortName = data.album?.['short-name'] || shortName || albumName;
       albumNames[albumId] = { artist, albumName, shortName: resolvedShortName };
       albumDataCache[albumId] = { artist, albumName, shortName: resolvedShortName, history: data.history, matchByDate, matchList };
@@ -594,6 +595,37 @@ function fetchScoreHistory(albumId) {
   return historyFetches[albumId];
 }
 
+/* One album's matches, cached and in-flight-deduped exactly as above. Both
+   charts want this for the same albums and a reader moves between them, so
+   fetching it once per album per session is the point.
+
+   Returns both shapes because they are not interchangeable. `byDate` is what
+   the charts want — they address points by date, and the value is a match id so
+   a click has somewhere to go. `matches` is the full list, kept because two
+   matches can share a date: an album that played twice in one day has two
+   entries there and only one in `byDate`, so the accordion must not be rebuilt
+   from the map.
+
+   Resolves empty on failure rather than rejecting: an album whose match history
+   is unavailable should lose its diamonds, not its line. */
+function fetchMatchHistory(albumId) {
+  if (matchHistoryCache[albumId]) return Promise.resolve(matchHistoryCache[albumId]);
+  if (!matchHistoryFetches[albumId]) {
+    matchHistoryFetches[albumId] = fetch(`${API_BASE_URL}/match-history/${encodeURIComponent(albumId)}`)
+      .then(res => (res.ok ? res.json() : { matches: [] }))
+      .catch(() => ({ matches: [] }))
+      .then(data => {
+        const matches = data.matches || [];
+        const byDate = {};
+        for (const m of matches) byDate[m.date] = m.match_id;
+        matchHistoryCache[albumId] = { matches, byDate };
+        return matchHistoryCache[albumId];
+      })
+      .finally(() => { delete matchHistoryFetches[albumId]; });
+  }
+  return matchHistoryFetches[albumId];
+}
+
 async function toggleMatchRow(matchId, btn, det, opts = {}) {
   const isOpen = btn.classList.contains("open");
   if (isOpen) { btn.classList.remove("open"); det.classList.remove("open"); return; }
@@ -793,7 +825,13 @@ function loadMatchChart() {
   status.textContent = "Loading…"; status.className = "";
   wrap.style.display = "none";
   let failed = 0;
-  Promise.all(ranking.map(item => fetchScoreHistory(item.id).catch(() => { failed++; })))
+  /* `failed` counts score failures only: it drives "Score history unavailable
+     for N albums", and a missing match history costs an album its diamonds, not
+     its line. fetchMatchHistory never rejects, so it needs no catch. */
+  Promise.all(ranking.flatMap(item => [
+    fetchScoreHistory(item.id).catch(() => { failed++; }),
+    fetchMatchHistory(item.id),
+  ]))
     .then(() => {
       // Same guard as every other write here: a fast back/forward must not let
       // a slow response repaint a match the reader has already left.
@@ -838,26 +876,31 @@ function renderMatchChart(failed) {
 
   const dates = [...new Set(charted.flatMap(item =>
     scoreHistoryCache[item.id].history.map(h => h.date)))].sort();
-  /* Only this match's date carries a marker. An album's other matches would
-     need a /match-history each — twice the requests — and would put clickable
-     points for other matches on a page that is about this one. */
   const matchIdx = dates.indexOf(date);
   const datasets = charted.map(item => {
     const color = matchRankColor(item.rank);
     const scoreByDate = Object.fromEntries(
       scoreHistoryCache[item.id].history.map(h => [h.date, h.score]));
+    /* Every match this album has played is marked, as on the album chart. This
+       match's diamonds are radius 6 and the album's others 4 — primary against
+       secondary at a glance, which together with the dashed rule at matchIdx
+       keeps the focal date unmistakable even when a neighbouring date also
+       carries a match. */
+    const marks = matchHistoryCache[item.id]?.byDate || {};
+    const isFocal = ctx => ctx.dataIndex === matchIdx;
+    const isOther = ctx => !isFocal(ctx) && !!marks[dates[ctx.dataIndex]];
     return {
       label: item["short-name"] || item.album,
       data: dates.map(d => scoreByDate[d] ?? null),
       borderColor: color.border, backgroundColor: color.bg,
       tension: 0.2, spanGaps: true,
       pointBackgroundColor: color.border,
-      pointStyle: ctx => ctx.dataIndex === matchIdx ? "rectRot" : "circle",
-      pointRadius: ctx => ctx.dataIndex === matchIdx ? 6 : 0,
-      pointHoverRadius: ctx => ctx.dataIndex === matchIdx ? 8 : 4,
+      pointStyle: ctx => (isFocal(ctx) || isOther(ctx)) ? "rectRot" : "circle",
+      pointRadius: ctx => isFocal(ctx) ? 6 : (isOther(ctx) ? 4 : 0),
+      pointHoverRadius: ctx => isFocal(ctx) ? 8 : (isOther(ctx) ? 6 : 4),
       // Keeps the radius-0 points hoverable at all: PointElement.inRange tests
       // hitRadius + radius. Same 8px the album chart uses.
-      pointHitRadius: 8, yAxisID: "yScore",
+      pointHitRadius: 8, yAxisID: "yScore", _albumId: item.id,
     };
   });
 
@@ -868,6 +911,21 @@ function renderMatchChart(failed) {
     options: {
       responsive: true, maintainAspectRatio: false,
       interaction: { mode: "nearest", intersect: true },
+      /* Same shared-resolution rule as the album chart: options.hover inherits
+         from options.interaction, so onClick, onHover and the tooltip footer all
+         describe the one point Chart.js already resolved. */
+      onClick: (e, elements, chart) => {
+        const id = matchIdAt(chart, elements[0], dates);
+        // Clicking this match's own diamond would pushState the URL we are on
+        // and re-dispatch — restarting the fetch and scrolling a reader to the
+        // top of a page they were already reading.
+        if (id && id !== currentMatchId) navigate(matchHref(id));
+      },
+      onHover: (e, elements, chart) => {
+        const id = matchIdAt(chart, elements[0], dates);
+        const want = id && id !== currentMatchId ? "pointer" : "default";
+        if (chart.canvas.style.cursor !== want) chart.canvas.style.cursor = want;
+      },
       plugins: {
         legend: { display: false },
         /* Chart.js's own tooltip, not the album view's external one. That one
@@ -882,12 +940,34 @@ function renderMatchChart(failed) {
           padding: 8, cornerRadius: 8,
           titleFont: { family: "'Poppins', sans-serif", size: 12, weight: 700 },
           bodyFont: { family: "'Poppins', sans-serif", size: 12 },
-          callbacks: { label: ctx => ` ${ctx.dataset.label}: ${formatScore(ctx.parsed.y)}` },
+          callbacks: {
+            label: ctx => ` ${ctx.dataset.label}: ${formatScore(ctx.parsed.y)}`,
+            /* The one affordance a canvas click target can carry. Suppressed on
+               this match's own diamond, which goes nowhere. */
+            footer: items => {
+              const id = matchIdAt(matchChart, items[0], dates);
+              return id && id !== currentMatchId ? "Click to open this match" : "";
+            },
+          },
+          footerFont: { family: "'Poppins', sans-serif", size: 11, style: "italic" },
+          footerColor: "#6B7280",
         },
       },
       scales: chartScaleOptions(),
     },
   });
+}
+
+/* The match view's counterpart to chartPointAt, and deliberately not a reuse of
+   it: that one resolves through albumDataCache, which is album-view state this
+   view must not read or write. `hit` is a Chart.js element or tooltip item —
+   both carry datasetIndex and index/dataIndex. */
+function matchIdAt(chart, hit, dates) {
+  if (!chart || !hit) return null;
+  const albumId = chart.data?.datasets?.[hit.datasetIndex]?._albumId;
+  const date = dates[hit.index ?? hit.dataIndex];
+  if (!albumId || !date) return null;
+  return matchHistoryCache[albumId]?.byDate?.[date] || null;
 }
 
 /* ── Landing: recent matches ────────────────────────────── */
