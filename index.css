@@ -211,6 +211,17 @@ th.sort-active .sort-indicator { color: var(--pink); }
   padding: 0.05rem 0.3rem; margin: 0.12rem calc(-0.3rem - 2px);
 }
 #chart-tooltip .tt-loading { color: var(--ink-soft); }
+/* Spells out what the label row's `Click →` only gestures at, mirroring the
+   match chart's Chart.js tooltip footer — italic, --ink-soft — so the same
+   affordance reads the same on both charts. Inside .tt-match, so the panel's
+   paper fill and 6px bottom radius still close the tooltip, and its own block
+   rather than a third item in the .tt-match-label row, which is already at its
+   width budget against the tooltip's 240px max. */
+#chart-tooltip .tt-match-hint {
+  margin-top: 0.35rem;
+  font-size: 0.7rem; font-style: italic; font-weight: 500;
+  color: var(--ink-soft);
+}
 
 #history-panes { display: flex; gap: 1.5rem; align-items: flex-start; }
 #score-pane { flex: 55 0 0%; min-width: 0; }

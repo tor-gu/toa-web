@@ -421,13 +421,14 @@ function chartTooltipHtml({ albumId, date, score, matchId }, failed = false) {
         `<span class="tt-rank-num">${item.rank}.</span>` +
         `${esc(item["short-name"] || item.album)}</div>`).join("")
     : `<div class="tt-loading">${failed ? "Results unavailable." : "Loading…"}</div>`;
-  // The hint goes when the fetch failed: the match view calls the same
+  // Both hints go when the fetch failed: the match view calls the same
   // /results/{id}, so pointing at it there would just promise a second error.
   // The click itself stays live either way.
   return html + `<div class="tt-match">` +
     `<div class="tt-match-label"><span>Match results</span>` +
     `${failed ? "" : `<span class="tt-match-cta">Click →</span>`}</div>` +
-    `${body}</div>`;
+    `${body}` +
+    `${failed ? "" : `<div class="tt-match-hint">Click to open this match</div>`}</div>`;
 }
 
 function hideChartTooltip() {
