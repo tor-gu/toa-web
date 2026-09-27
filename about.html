@@ -76,9 +76,22 @@
       <p>
         This is the Tournament of Albums.
       </p>
-      <p class="about-placeholder">
-        Eventually, I will place an explanation here. But I have not yet done so.
+      <p>
+        Obviously, it is extremely important that I be able to rank all the albums
+        in my music collection, but I have found it too difficult to rank them all
+        at once. This is my attempt to do it piecemeal, in small batches, with scores
+        aggregated by applying my highly scientific
+        <a href="https://github.com/tor-gu/toa-lambda-score#readme">probabilistic model</a>.
       </p>
+      <p>
+        If (for some reason) you wish to view the code that powers the Tournament of Albums,
+        you may begin here:
+      </p>
+      <ul>
+        <li>The <a href="https://github.com/tor-gu/toa-web#readme">static web app</a> you are now viewing, served from S3 and CloudFront.</li>
+        <li>A <a href="https://github.com/tor-gu/toa-api#readme">read-only API</a>, with one Lambda per endpoint.</li>
+        <li>A <a href="https://github.com/tor-gu/toa-data-pipeline#readme">data pipeline</a> that picks up new match results, applies the model, and writes the scores to DynamoDB for the API to serve.</li>
+      </ul>
     </article>
   </main>
 </body>
