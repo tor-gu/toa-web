@@ -86,6 +86,17 @@ tr:hover td { background: rgba(255, 61, 127, 0.06); transition: background 0.1s;
   border-radius: 8px; font-size: 0.72rem; color: #fff;
 }
 .score { font-variant-numeric: tabular-nums; color: var(--violet); font-weight: 700; }
+.rating { white-space: nowrap; }
+/* The star symbols in index.html read every colour from these. Filled stars get
+   a darker-gold outline and empty slots none: an ink outline on every star gave
+   all five the same silhouette, so the count of filled ones was hard to read. */
+.stars {
+  display: inline-flex; gap: 1px; vertical-align: middle;
+  --star-fill: var(--yellow); --star-stroke: #C98F00;
+  --star-empty: #E9E5EE; --star-empty-stroke: none;
+  --star-stroke-width: 1.4;
+}
+.stars svg { width: 0.95rem; height: 0.95rem; }
 .clickable-row { cursor: pointer; }
 .album-link { color: var(--ink); text-decoration: none; }
 .album-link:hover { color: var(--violet); text-decoration: underline; }
@@ -363,6 +374,11 @@ th.sort-active .sort-indicator { color: var(--pink); }
 
 @media (max-width: 600px) {
   #history-panes { flex-direction: column; }
+  /* Same trade as the match view below: the album name identifies the row and
+     is already the link, so the artist gives way and Rating keeps full-size
+     stars without a horizontal scroll. */
+  #content .col-artist { display: none; }
+  #content th, #content td { padding: 0.45rem 0.4rem; }
   #score-pane, #match-pane { flex: none; width: 100%; }
   /* Four numeric columns don't fit beside both name columns. The album name
      identifies the row on its own and is already the link to the album page, so

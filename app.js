@@ -12,6 +12,23 @@ function formatRank(rank) {
 function formatScore(score) {
   return score == null ? "–" : score.toFixed(3);
 }
+/* Five <use> references into the star symbols in index.html. `stars` is
+   absent where the API predates star ratings, and can run past 0–5 when the
+   deployment sets TRUNCATE_STARS=false; the display clamps either way. */
+function starsHtml(stars) {
+  if (stars == null) return "–";
+  const s = Math.min(Math.max(stars, 0), 5);
+  const full = Math.floor(s);
+  const half = s - full >= 0.5 ? 1 : 0;
+  const kinds = [
+    ...Array(full).fill("full"),
+    ...Array(half).fill("half"),
+    ...Array(5 - full - half).fill("empty"),
+  ];
+  return `<span class="stars" role="img" aria-label="${s} out of 5 stars" title="${s} stars">${
+    kinds.map(k => `<svg aria-hidden="true"><use href="#star-${k}"/></svg>`).join("")
+  }</span>`;
+}
 function rankColor(rank) {
   if (rank == null) return "var(--ink-soft)";
   return RANK_COLORS[Math.floor(rank - 1) % RANK_COLORS.length];
@@ -224,9 +241,10 @@ function renderTable() {
   document.querySelector("#content tbody").innerHTML = rows.map(s => `
     <tr class="clickable-row" data-album-id="${esc(s.id)}">
       <td class="rank"><span style="background:${rankColor(s.rank)}">${formatRank(s.rank)}</span></td>
-      <td>${esc(s.artist)}</td>
+      <td class="col-artist">${esc(s.artist)}</td>
       <td><a class="album-link" href="${albumHref(s.id)}">${esc(s.album)}</a></td>
       <td class="score">${s.score.toFixed(3)}</td>
+      <td class="rating">${starsHtml(s.stars)}</td>
     </tr>`).join("");
   document.querySelectorAll("#content th[data-col]").forEach(th => {
     const ind = th.querySelector(".sort-indicator");
@@ -1015,9 +1033,10 @@ async function load() {
       <table>
         <thead><tr>
           <th class="sortable" data-col="rank">Rank <span class="sort-indicator">↕</span></th>
-          <th class="sortable" data-col="artist">Artist <span class="sort-indicator">↕</span></th>
+          <th class="sortable col-artist" data-col="artist">Artist <span class="sort-indicator">↕</span></th>
           <th class="sortable" data-col="album">Album <span class="sort-indicator">↕</span></th>
           <th>Score</th>
+          <th>Rating</th>
         </tr></thead>
         <tbody></tbody>
       </table>`;
