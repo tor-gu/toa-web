@@ -113,13 +113,20 @@ th.sort-active .sort-indicator { color: var(--pink); }
   text-transform: uppercase; letter-spacing: 0.12em;
   color: var(--ink-soft);
 }
+/* Wraps, so a long title pushes the stars onto their own line rather than
+   squeezing them. */
+#album-title-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.75rem; }
 #album-title {
+  min-width: 0;
   font-family: 'Bungee', sans-serif;
   font-size: clamp(1.2rem, 4vw, 1.9rem);
   margin: 0.1rem 0 0;
   line-height: 1.15;
   color: var(--ink);
 }
+
+/* Sized up from the table's 0.95rem to sit beside the Bungee title. */
+#album-rating .stars svg { width: 1.35rem; height: 1.35rem; }
 
 /* ── History Panel ──────────────────────────────────────── */
 #history-panel {

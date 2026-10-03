@@ -70,7 +70,12 @@
   <div id="view-album" style="display:none">
     <div id="album-heading">
       <div id="album-artist"></div>
-      <h2 id="album-title"></h2>
+      <!-- The rating sits beside the <h2>, not inside it, so the heading's
+           accessible name stays the album title alone. -->
+      <div id="album-title-row">
+        <h2 id="album-title"></h2>
+        <span id="album-rating"></span>
+      </div>
     </div>
     <div id="history-panel" class="panel">
       <div id="history-panes">

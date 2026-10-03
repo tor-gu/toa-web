@@ -163,11 +163,13 @@ function showAlbumView(albumId) {
   showView("view-album");
   const artistEl = document.getElementById("album-artist");
   const titleEl = document.getElementById("album-title");
+  const ratingEl = document.getElementById("album-rating");
   const meta = scoresById[albumId];
   if (!meta) {
     resetComparison();
     focalAlbumId = null;
     artistEl.textContent = "";
+    ratingEl.innerHTML = "";
     document.getElementById("history-canvas-wrap").style.display = "none";
     const status = document.getElementById("history-status");
     /* A deep link that beat /scores here. The id may well be fine — we just have
@@ -193,6 +195,9 @@ function showAlbumView(albumId) {
   }
   artistEl.textContent = meta.artist;
   titleEl.textContent = meta.album;
+  /* Nothing rather than the table's "–" when the API predates star ratings: a
+     dash after a title reads as punctuation. */
+  ratingEl.innerHTML = meta.stars == null ? "" : starsHtml(meta.stars);
   document.title = pageTitle(`${meta.album} — ${meta.artist}`);
   if (focalAlbumId !== albumId) {
     resetComparison();
